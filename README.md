@@ -11,7 +11,7 @@ Focus on IPC implementation without worrying about trivial matters, and you can 
 * All methods are type-safe.
 * Everything is module, with no `window` and `global.d.ts`.
 * By default, the [serialize-error](https://www.npmjs.com/package/serialize-error) library is used to serialize error objects, so you don't have to worry about error handling. You can also customize the error handler.
-* `global.d.ts` is not required.
+* Provide some optional security mechanisms to enhance security.
 
 **Even if you don't use TypeScript, you can use this library, which can help alleviate the burden of using IPC.**
 
@@ -42,15 +42,20 @@ type Functions = {
   say(who: string): string
 }
 
-const controller = new IpcController<Functions>('hello')
+export const controller = new IpcController<Functions>('hello')
 export const callers = controller.callers // Proxy object
 export const handlers = controller.handlers // Proxy object
 
 // preload.ts
 import { contextBridge, ipcRenderer } from 'electron/renderer'
 import { preloadInit } from 'electron-ipc-flow' // need bundler
+import { controller as hello } from './hello.ts'
 
-preloadInit(contextBridge, ipcRenderer)
+preloadInit(contextBridge, ipcRenderer, {
+  autoRegisterIpcController: false, // Optional, default to true.
+})
+// If `autoRegisterIpcController` is false, the controller needs to be register manually.
+hello.register()
 
 // renderer.ts
 import { callers as hello } from './hello.ts'

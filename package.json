@@ -15,7 +15,10 @@
     "module": "./dist/index.mjs",
     "types": "./dist/index.d.ts",
     "homepage": "https://github.com/Hill-98/electron-ipc-flow",
-    "repository": "github:Hill-98/electron-ipc-flow",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/Hill-98/electron-ipc-flow.git"
+    },
     "bugs": "https://github.com/Hill-98/electron-ipc-flow/issues",
     "author": "Zhong Lufan <lufanzhong@gmail.com>",
     "license": "MIT",

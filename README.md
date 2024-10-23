@@ -15,6 +15,12 @@ Focus on IPC implementation without worrying about trivial matters, and you can 
 
 **Even if you don't use TypeScript, you can use this library, which can help alleviate the burden of using IPC.**
 
+## Install
+
+Use npm: `npm install electron-ipc-flow`
+
+Use yarn: `yarn add electron-ipc-flow`
+
 ## Examples
 
 ### Simple Function
@@ -138,7 +144,7 @@ You can set the environment variable `ELECTRON_IPC_FLOW_DEBUG` to `true` to enab
 
 **disable**: `process.env.ELECTRON_IPC_FLOW_DEBUG = 'false'` in main.js first line.
 
-**You should always disable debug mode on production release! ! !**
+**You should always disable debug mode on production release ! ! !**
 
 ## Thanks
 

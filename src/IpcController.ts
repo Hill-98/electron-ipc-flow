@@ -57,7 +57,7 @@ const callersHandler: ProxyHandler<IpcController> = {
 }
 
 const handlersHandler: ProxyHandler<IpcController> = {
-  set (target, p, newValue): boolean {
+  set (target, p, newValue) {
     target.handle(p as any, newValue)
     return true
   },
@@ -135,9 +135,15 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
     return channelGenerator(this.name, name)
   }
 
-  #ipcMainEventListener (channel: string, name: string, event: Electron.IpcMainInvokeEvent, ...args: any) {
-    const trustHandler = this.trustHandler ?? TrustHandler
-    if (!trustHandler(this.name, name, 'event', event)) {
+  async #ipcMainEventListener (channel: string, name: string, event: Electron.IpcMainInvokeEvent, ...args: any) {
+    try {
+      const trustHandler = this.trustHandler ?? TrustHandler
+      if (!await trustHandler(this.name, name, 'event', event)) {
+        debug(`IpcController.#ipcMainEventListener: ${this.name}:${name}: blocked (channel: ${channel})`)
+        return
+      }
+    } catch (err) {
+      console.error('An error occurred in the trust handler:', err)
       return
     }
 
@@ -166,13 +172,14 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
     try {
       const trustHandler = this.trustHandler ?? TrustHandler
       if (!await trustHandler(this.name, name, 'invoke', event)) {
+        debug(`IpcController.#handle: ${this.name}:${name}: blocked (channel: ${channel})`)
         return {
           status: Status.error,
           value: ErrorHandler.serialize(new Error('InvokeController：Blocked by trust handler')),
         }
       }
     } catch (err) {
-      console.error(err)
+      console.error('An error occurred in the trust handler:', err)
       return {
         status: Status.error,
         value: ErrorHandler.serialize(new Error('InvokeController：Blocked by trust handler')),

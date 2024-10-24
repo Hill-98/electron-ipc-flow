@@ -23,7 +23,7 @@ Use yarn: `yarn add electron-ipc-flow`
 
 ## Examples
 
-### Simple Function
+### Easy handle and invoke
 
 ```typescript
 // main.ts
@@ -43,7 +43,7 @@ type Functions = {
 }
 
 export const controller = new IpcController<Functions>('hello')
-export const callers = controller.callers // Proxy object
+export const calls = controller.calls // Proxy object
 export const handlers = controller.handlers // Proxy object
 
 // preload.ts
@@ -58,7 +58,7 @@ preloadInit(contextBridge, ipcRenderer, {
 hello.register()
 
 // renderer.ts
-import { callers as hello } from './hello.ts'
+import { calls as hello } from './hello.ts'
 
 console.log(await hello.say('World')) // Hello World!
 ```

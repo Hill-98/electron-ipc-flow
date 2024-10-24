@@ -67,7 +67,7 @@ const handlersHandler: ProxyHandler<IpcController> = {
  * This controller can call functions defined in the main process from the renderer process or
  * send messages to the main process, and it has an optional trust handler.
  *
- * `callers` and `handlers` are `Proxy` objects used for elegantly calling `invoke()` and `handle()`.
+ * `calls` and `handlers` are `Proxy` objects used for elegantly calling `invoke()` and `handle()`.
  */
 export class IpcController<Functions extends IpcControllerFunctions = any, Events extends IpcControllerEvents = any> {
   /**
@@ -80,7 +80,13 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
   /**
    * Can only be used in the renderer process
    */
-  readonly callers: IpcControllerCallers<Functions> = new Proxy(this as any, callersHandler)
+  readonly calls: IpcControllerCallers<Functions> = new Proxy(this as any, callersHandler)
+
+  /**
+   * @deprecated Please use calls.
+   * @see {calls}
+   */
+  readonly callers = this.calls
 
   /**
    * Can only be used in the main process

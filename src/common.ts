@@ -55,7 +55,7 @@ export function debug (...args: any[]) {
   if (!isDebug()) {
     return
   }
-  if (args[0] instanceof Error) {
+  if (args.some((arg) => arg instanceof Error)) {
     console.error(...args)
   } else {
     console.debug(...args)

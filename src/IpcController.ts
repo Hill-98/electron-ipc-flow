@@ -100,7 +100,7 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
    */
   trustHandler: TrustHandlerFunc | undefined
 
-  #ipcMainEventListeners = new Map<string, Function>()
+  #ipcMainEventListeners = new Map<string, IpcControllerHandlerWithEvent>()
 
   #eventsListeners = new Map<string, { listener: IpcControllerHandlerWithEvent, once: boolean }[]>()
 
@@ -121,7 +121,7 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
     ipcMainIsNull(IpcController.ipcMain)
 
     if (!this.#ipcMainEventListeners.has(event)) {
-      const channel = this.#channel(event).concat(EventChannelSuffix)
+      const channel = this.#eventChannel(event)
       const listener = this.#ipcMainEventListener.bind(this, channel, event)
       IpcController.ipcMain.on(channel, listener)
       this.#ipcMainEventListeners.set(event, listener)
@@ -137,8 +137,12 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
     this.#eventsListeners.set(event, listeners)
   }
 
-  #channel (name: string) {
-    return channelGenerator(this.name, name)
+  #eventChannel (name: string) {
+    return channelGenerator(this.name, name).concat(EventChannelSuffix)
+  }
+
+  #invokeChannel (name: string) {
+    return channelGenerator(this.name, name).concat(InvokeChannelSuffix)
   }
 
   async #ipcMainEventListener (channel: string, name: string, event: Electron.IpcMainInvokeEvent, ...args: any) {
@@ -222,7 +226,7 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
    */
   handle<K extends IpcControllerKey<Functions>> (name: K, handler: Functions[K]) {
     ipcMainIsNull(IpcController.ipcMain)
-    const channel = this.#channel(name).concat(InvokeChannelSuffix)
+    const channel = this.#invokeChannel(name)
     IpcController.ipcMain.handle(channel, this.#handle.bind(this, channel, name, false, handler))
   }
 
@@ -233,7 +237,7 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
    */
   handleWithEvent<K extends IpcControllerKey<Functions>> (name: K, handler: IpcControllerHandlerWithEvent<Functions[K]>) {
     ipcMainIsNull(IpcController.ipcMain)
-    const channel = this.#channel(name).concat(InvokeChannelSuffix)
+    const channel = this.#invokeChannel(name)
     IpcController.ipcMain.handle(channel, this.#handle.bind(this, channel, name, true, handler))
   }
 
@@ -252,11 +256,9 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
 
     const handlers = (listener ? (this.#eventsListeners.get(event) ?? []) : []).filter((item) => item.listener !== listener)
     if (handlers.length === 0) {
-      if (this.#ipcMainEventListeners.has(event)) {
-        IpcController.ipcMain.off(
-          this.#channel(event).concat(EventChannelSuffix),
-          this.#ipcMainEventListeners.get(event) as any,
-        )
+      const listener = this.#ipcMainEventListeners.get(event)
+      if (listener) {
+        IpcController.ipcMain.off(this.#eventChannel(event), listener)
       }
       this.#eventsListeners.delete(event)
     } else {

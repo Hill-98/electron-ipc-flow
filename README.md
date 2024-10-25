@@ -1,19 +1,17 @@
 # electron-ipc-flow
 
-Fluently and type-safely write IPC for Electron
+Fluently and type-safely write IPC for [Electron](https://www.electronjs.org/).
 
-Focus on IPC implementation without worrying about trivial matters, and you can modify the code as you like.
+Just focus on the IPC handlers and calls, without any trivial matters; everything will happen as you envision.
 
 ## Features
 
 * Just like using local functions.
-* Type declarations are in one place.
+* Type declarations are in one place, so you can also use [JSDoc](https://jsdoc.app/).
 * All methods are type-safe.
 * Everything is module, with no `window` and `global.d.ts`.
 * By default, the [serialize-error](https://www.npmjs.com/package/serialize-error) library is used to serialize error objects, so you don't have to worry about error handling. You can also customize the error handler.
 * Provide some optional security mechanisms to enhance security.
-
-**Even if you don't use TypeScript, you can use this library, which can help alleviate the burden of using IPC.**
 
 ## Install
 
@@ -21,7 +19,7 @@ Use npm: `npm install electron-ipc-flow`
 
 Use yarn: `yarn add electron-ipc-flow`
 
-## Examples
+## Usage
 
 ### Easy handle and invoke
 
@@ -42,19 +40,19 @@ type Functions = {
   say(who: string): string
 }
 
-export const controller = new IpcController<Functions>('hello')
-export const calls = controller.calls // Proxy object
-export const handlers = controller.handlers // Proxy object
+export const controller1 = new IpcController<Functions>('hello')
+export const calls = controller1.calls // Proxy object
+export const handlers = controller1.handlers // Proxy object
 
 // preload.ts
 import { contextBridge, ipcRenderer } from 'electron/renderer'
 import { preloadInit } from 'electron-ipc-flow' // need bundler
-import { controller as hello } from './hello.ts'
+import { controller1 as hello } from './hello.ts'
 
 preloadInit(contextBridge, ipcRenderer, {
   autoRegisterIpcController: false, // Optional, default to true.
 })
-// If `autoRegisterIpcController` is false, the controller needs to be register manually.
+// If `autoRegisterIpcController` is false, the controller1 needs to be register manually.
 hello.register()
 
 // renderer.ts
@@ -109,7 +107,7 @@ import hello from './hello.ts'
 // Define to send messages to those renderers. (global)
 IpcBroadcastController.WebContentsGetter = () => Promise.resolve(BrowserWindow.getAllWindows().map((win) => win.webContents))
 
-// Define to send messages to those renderers. (controller)
+// Define to send messages to those renderers. (controller1)
 // hello.webContentsGetter = () => Promise.resolve([BrowserWindow.getAllWindows()[0].webContents]) 
 hello.send('World')
 
@@ -127,7 +125,7 @@ import { contextBridge, ipcRenderer } from 'electron/renderer'
 import { preloadInit } from 'electron-ipc-flow' // need bundler
 
 preloadInit(contextBridge, ipcRenderer, {
-  initBroadcastController: true, // Broadcast controller is not initialized by default
+  initBroadcastController: true, // Broadcast controller1 is not initialized by default
 })
 
 // renderer.ts
@@ -138,13 +136,27 @@ hello.on('say', (event, who) => {
 })
 ```
 
-This requires a bundler to make the preload script work, but you should already be using one, right?
+---
 
-If you don't want to use a bundler, or if you don't need to do anything else in the preload script, you can use the entire precompiled preload script: `node_modules/electron-ipc-flow/dist/preload.js`.
+If you don't want to use TypeScript, you can use JSDoc to get type support:
+
+```javascript
+/**
+ * @typedef Functions
+ * @property {(who: string) => string} say
+ */
+
+/** @type {import('electron-ipc-flow').IpcController<Functions>} */
+const controller1 = new IpcController('hello')
+```
+
+---
+
+If you don't want to use bundler, or don't need to do anything else in the preload script, you can use this preload script: [`node_modules/electron-ipc-flow/dist/preload.js`](https://unpkg.com/electron-ipc-flow/dist/preload.js).
 
 ## API
 
-You can check the definition file `dist/index.d.ts` for the API and comments.
+You can check the definition file [`dist/index.d.ts`](https://unpkg.com/electron-ipc-flow/dist/index.d.ts) for the API and comments.
 
 ## Debug
 
@@ -158,7 +170,7 @@ You can set the environment variable `ELECTRON_IPC_FLOW_DEBUG` to `true` to enab
 
 ## Thanks
 
-* **[serialize-error](https://www.npmjs.com/package/serialize-error)**: Serialize/deserialize an error into a plain object
+* [**serialize-error**](https://www.npmjs.com/package/serialize-error): Serialize/deserialize an error into a plain object
 
 Thanks to [JetBrains](https://jb.gg/OpenSourceSupport) for providing the JetBrains IDEs open source license.
 

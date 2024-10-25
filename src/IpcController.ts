@@ -161,7 +161,7 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
     }
 
     debug(`IpcController.#ipcMainEventListener: ${this.name}:${name}: received (channel: ${channel}) `)
-    debug('params:', args)
+    debug('args:', args)
 
     const listeners = this.#eventsListeners.get(name) ?? []
     const onceListeners = listeners.filter((item) => {
@@ -180,7 +180,7 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
 
   async #handle (channel: string, name: string, passEvent: boolean, func: IpcControllerHandler, event: Electron.IpcMainInvokeEvent, ...args: any): Promise<InvokeHandlerReturnValue> {
     debug(`IpcController.#handle: ${this.name}:${name}: received (channel: ${channel})`)
-    debug('params:', args)
+    debug('args:', args)
 
     try {
       const trustHandler = this.trustHandler ?? TrustHandler
@@ -200,12 +200,12 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
     }
 
     try {
-      const result = await this.#tryPromise(passEvent ? func(event, ...args) : func(...args))
+      const value = await this.#tryPromise(passEvent ? func(event, ...args) : func(...args))
       debug(`IpcController.#handle: ${this.name}:${name}: send result (channel: ${channel})`)
-      debug('result:', result)
+      debug('value:', value)
       return {
         status: Status.result,
-        value: result,
+        value,
       }
     } catch (err) {
       debug(`IpcController.#handle: ${this.name}:${name}: catch error (channel: ${channel})`)
@@ -326,8 +326,8 @@ export function preloadInit (contextBridge: Electron.ContextBridge, ipcRenderer:
         throw new RangeError(`${funcName}: ${controllerName}: controller not registered.`)
       }
 
-      debug(`${funcName}: invoke: ${controllerName}:${name} (channel: ${channel})`)
-      debug('params:', args)
+      debug(`${funcName}: ${controllerName}:${name}: invoke (channel: ${channel})`)
+      debug('args:', args)
 
       return ipcRenderer.invoke(channel, ...args)
     },
@@ -345,8 +345,8 @@ export function preloadInit (contextBridge: Electron.ContextBridge, ipcRenderer:
         throw new RangeError(`${funcName}: ${controllerName}: controller not registered.`)
       }
 
-      debug(`${funcName}: send: ${controllerName}:${name} (channel: ${channel})`)
-      debug('params:', args)
+      debug(`${funcName}: ${controllerName}:${name} send (channel: ${channel})`)
+      debug('args:', args)
 
       ipcRenderer.send(channel, ...args)
     },

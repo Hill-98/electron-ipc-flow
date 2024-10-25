@@ -88,7 +88,7 @@ export class IpcBroadcastController<Events extends IpcBroadcastControllerEvents 
 
   #ipcRendererEventListener (channel: string, name: IpcBroadcastControllerKey<Events>, event: Electron.IpcRendererEvent, ...args: any) {
     debug(`IpcController.#ipRendererEventListener: ${this.name}:${name}: received (channel: ${channel}) `)
-    debug('params:', args)
+    debug('args:', args)
 
     const listeners = this.#eventsListeners.get(name) ?? []
     const onceListeners = listeners.filter((item) => {
@@ -163,7 +163,7 @@ export function preloadInit (contextBridge: Electron.ContextBridge, ipcRenderer:
       const channel = channelGenerator(controllerName, name)
       const funcName = `${this.name}.off`
 
-      debug(`${funcName}: off: ${controllerName}:${name} (channel: ${channel})`)
+      debug(`${funcName}: ${controllerName}:${name} off (channel: ${channel})`)
 
       ipcRenderer.off(channel, listener)
     },
@@ -171,7 +171,7 @@ export function preloadInit (contextBridge: Electron.ContextBridge, ipcRenderer:
       const channel = channelGenerator(controllerName, name)
       const funcName = `${this.name}.on`
 
-      debug(`${funcName}: on: ${controllerName}:${name} (channel: ${channel})`)
+      debug(`${funcName}: ${controllerName}:${name} on (channel: ${channel})`)
 
       ipcRenderer.on(channel, listener)
     },

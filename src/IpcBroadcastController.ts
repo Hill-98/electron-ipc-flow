@@ -106,7 +106,7 @@ export class IpcBroadcastController<Events extends IpcBroadcastControllerEvents 
   }
 
   /**
-   * Can only be called in the renderer process
+   * Can only be called in the renderer process.
    */
   off<K extends IpcBroadcastControllerKey<Events>> (event: K, listener?: IpcBroadcastControllerListenerWithEvent<Events[K]>) {
     const handlers = (listener ? (this.#eventsListeners.get(event) ?? []) : []).filter((item) => item.listener !== listener)
@@ -122,21 +122,21 @@ export class IpcBroadcastController<Events extends IpcBroadcastControllerEvents 
   }
 
   /**
-   * Can only be called in the renderer process
+   * Can only be called in the renderer process.
    */
   on<K extends IpcBroadcastControllerKey<Events>> (event: K, listener: IpcBroadcastControllerListenerWithEvent<Events[K]>) {
     this.#addEventListener(event, listener)
   }
 
   /**
-   * Can only be called in the renderer process
+   * Can only be called in the renderer process.
    */
   once<K extends IpcBroadcastControllerKey<Events>> (event: K, listener: IpcBroadcastControllerListenerWithEvent<Events[K]>) {
     this.#addEventListener(event, listener, true)
   }
 
   /**
-   * Can only be called in the main process
+   * Can only be called in the main process.
    */
   send<K extends IpcBroadcastControllerKey<Events>> (event: K, ...args: Parameters<Events[K]>) {
     const getter = this.webContentsGetter ?? IpcBroadcastController.WebContentsGetter ?? (() => Promise.resolve([]))

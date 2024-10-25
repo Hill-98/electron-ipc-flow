@@ -94,23 +94,17 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
   readonly name: string = ''
 
   /**
-   * Can only be used in the renderer process
+   * Can only be used in the renderer process.
    */
   readonly calls: IpcControllerCallers<Functions> = new Proxy(this as any, callersHandler)
 
   /**
-   * @deprecated Please use calls.
-   * @see {calls}
-   */
-  readonly callers = this.calls
-
-  /**
-   * Can only be used in the main process
+   * Can only be used in the main process.
    */
   readonly handlers: Functions = new Proxy(this as any, handlersHandler)
 
   /**
-   * This controller specific trust handler
+   * This controller specific trust handler.
    *
    * @see {TrustHandler}
    */
@@ -238,7 +232,7 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
   }
 
   /**
-   * Can only be called in the main process
+   * Can only be called in the main process.
    */
   handle<K extends IpcControllerKey<Functions>> (name: K, handler: Functions[K]) {
     ipcMainIsNull(IpcController.ipcMain)
@@ -247,7 +241,7 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
   }
 
   /**
-   * Can only be called in the main process
+   * Can only be called in the main process.
    *
    * Like `handle()`, it will just pass the event object.
    */
@@ -258,7 +252,7 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
   }
 
   /**
-   * Can only be called in the renderer process
+   * Can only be called in the renderer process.
    */
   async invoke<K extends IpcControllerKey<Functions>> (name: K, ...args: Parameters<Functions[K]>): Promise<Awaited<ReturnType<Functions[K]>>> {
     const result = await getGlobalIpcController().invoke(this.name, name, ...args)
@@ -275,7 +269,7 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
   }
 
   /**
-   * Can only be called in the main process
+   * Can only be called in the main process.
    */
   off<K extends IpcControllerKey<Events>> (event: K, listener?: IpcControllerEventHandler<Functions[K]>) {
     ipcMainIsNull(IpcController.ipcMain)
@@ -293,35 +287,35 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
   }
 
   /**
-   * Can only be called in the main process
+   * Can only be called in the main process.
    */
   on<K extends IpcControllerKey<Events>> (event: K, listener: IpcControllerEventHandler<Events[K]>) {
     this.#addEventListener(event, listener)
   }
 
   /**
-   * Can only be called in the main process
+   * Can only be called in the main process.
    */
   once<K extends IpcControllerKey<Events>> (event: K, listener: IpcControllerEventHandler<Events[K]>) {
     this.#addEventListener(event, listener, true)
   }
 
   /**
-   * Can only be called in the renderer process
+   * Can only be called in the renderer process.
    */
   send<K extends IpcControllerKey<Events>> (event: K, ...args: Parameters<Events[K]>) {
     getGlobalIpcController().send(this.name, event, ...args)
   }
 
   /**
-   * Can only be called in the preload script
+   * Can only be called in the preload script.
    */
   register () {
     IpcControllerRegistered.add(this.name)
   }
 
   /**
-   * Can only be called in the preload script
+   * Can only be called in the preload script.
    */
   unregister () {
     IpcControllerRegistered.delete(this.name)

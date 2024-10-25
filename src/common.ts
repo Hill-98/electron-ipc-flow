@@ -1,5 +1,4 @@
 import { deserializeError, serializeError } from 'serialize-error'
-import type { IpcController } from './IpcController.js'
 
 declare global {
   namespace globalThis {
@@ -20,11 +19,12 @@ export interface ErrorHandlerInterface {
   deserialize (errorObject: any): Error
 }
 
-export type TrustHandlerFunc = (controller: IpcController, name: string, type: 'event' | 'invoke', event: Electron.IpcMainInvokeEvent) => Promise<boolean>
-
 /**
  * The error handler used by `IpcController` defaults to using the
  * `serialize-error` package to serialize and deserialize error objects.
+ *
+ * The serialize method must be defined in the main process and the
+ * deserialize method must be defined in the renderer process.
  */
 export const ErrorHandler: ErrorHandlerInterface = {
   serialize: serializeError,
@@ -51,13 +51,3 @@ export function debug (...args: any[]) {
     console.debug(...args)
   }
 }
-
-/**
- * Global trust handler.
- *
- * `IpcController` calls the trust handler when it receives a call or event.
- * If the trust handler returns false, an exception is thrown to the renderer process: "*Blocked by trust handler.*".
- *
- * `IpcController` has `trustHandler` property that can be set to specific trust handler.
- */
-export let TrustHandler: TrustHandlerFunc = () => Promise.resolve(true)

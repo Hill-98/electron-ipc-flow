@@ -35,4 +35,4 @@ export function preloadInit (contextBridge: Electron.ContextBridge, ipcRenderer:
 
 export { IpcController } from './IpcController.ts'
 export { IpcBroadcastController } from './IpcBroadcastController.ts'
-export { TrustHandler, ErrorHandler } from './common.ts'
+export { ErrorHandler } from './common.ts'

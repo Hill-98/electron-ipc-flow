@@ -1,4 +1,4 @@
-import { debug, ErrorHandler, isNull, TrustHandler, TrustHandlerFunc } from './common.ts'
+import { debug, ErrorHandler, isNull } from './common.ts'
 
 declare global {
   namespace globalThis {
@@ -34,6 +34,8 @@ export type IpcControllerKey<T extends IpcControllerFunctions | IpcControllerEve
 export type IpcControllerCallers<T extends IpcControllerFunctions> = {
   readonly [P in keyof T]: (...args: Parameters<T[P]>) => Promise<Awaited<ReturnType<T[P]>>>
 }
+
+export type TrustHandlerFunc = (controller: IpcController, name: string, type: 'event' | 'invoke', event: Electron.IpcMainInvokeEvent) => Promise<boolean>
 
 const EventChannelSuffix = ':event'
 const InvokeChannelSuffix = ':invoke'
@@ -78,6 +80,16 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
    * `ipcMain` exported by the `electron` package, which must be set before using the controller.
    */
   static ipcMain: Electron.IpcMain | undefined
+
+  /**
+   * `IpcController` calls the trust handler when it receives a call or event.
+   * If the trust handler returns false, an exception is thrown to the renderer process: "*Blocked by trust handler.*".
+   *
+   * `IpcController` has `trustHandler` property that can be set to specific trust handler.
+   *
+   * @see {trustHandler}
+   */
+  static TrustHandler: TrustHandlerFunc = () => Promise.resolve(true)
 
   readonly name: string = ''
 
@@ -151,7 +163,7 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
 
   async #ipcMainEventListener (channel: string, name: IpcControllerKey<Events>, event: Electron.IpcMainEvent, ...args: any) {
     try {
-      const trustHandler = this.trustHandler ?? TrustHandler
+      const trustHandler = this.trustHandler ?? IpcController.TrustHandler
       if (!await trustHandler(this, name, 'event', event)) {
         debug(`IpcController.#ipcMainEventListener: ${this.name}:${name}: blocked (channel: ${channel})`)
         return
@@ -184,19 +196,19 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
     debug('args:', args)
 
     try {
-      const trustHandler = this.trustHandler ?? TrustHandler
+      const trustHandler = this.trustHandler ?? IpcController.TrustHandler
       if (!await trustHandler(this, name, 'invoke', event)) {
         debug(`IpcController.#handle: ${this.name}:${name}: blocked (channel: ${channel})`)
         return {
           status: Status.error,
-          value: ErrorHandler.serialize(new Error('InvokeController：Blocked by trust handler')),
+          value: ErrorHandler.serialize(new Error('Blocked by trust handler')),
         }
       }
     } catch (err) {
       console.error('An error occurred in the trust handler:', err)
       return {
         status: Status.error,
-        value: ErrorHandler.serialize(new Error('InvokeController：Blocked by trust handler')),
+        value: ErrorHandler.serialize(new Error('Blocked by trust handler')),
       }
     }
 

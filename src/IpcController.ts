@@ -28,7 +28,8 @@ export interface InvokeHandlerReturnValue<T = any> {
 export type IpcControllerHandler = (...args: any[]) => any
 export type IpcControllerEvents = Record<string, IpcControllerHandler>
 export type IpcControllerFunctions = Record<string, IpcControllerHandler>
-export type IpcControllerHandlerWithEvent<T extends IpcControllerHandler = IpcControllerHandler> = (event: Electron.IpcMainInvokeEvent, ...args: Parameters<T>) => ReturnType<T>
+export type IpcControllerInvokeHandler<T extends IpcControllerHandler = IpcControllerHandler> = (event: Electron.IpcMainInvokeEvent, ...args: Parameters<T>) => ReturnType<T>
+export type IpcControllerEventHandler<T extends IpcControllerHandler = IpcControllerHandler> = (event: Electron.IpcMainEvent, ...args: Parameters<T>) => ReturnType<T>
 export type IpcControllerKey<T extends IpcControllerFunctions | IpcControllerEvents> = Extract<keyof T, string>;
 export type IpcControllerCallers<T extends IpcControllerFunctions> = {
   readonly [P in keyof T]: (...args: Parameters<T[P]>) => Promise<Awaited<ReturnType<T[P]>>>
@@ -103,9 +104,9 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
    */
   trustHandler: TrustHandlerFunc | undefined
 
-  #ipcMainEventListeners = new Map<string, IpcControllerHandlerWithEvent>()
+  #ipcMainEventListeners = new Map<string, IpcControllerEventHandler>()
 
-  #eventsListeners = new Map<string, { listener: IpcControllerHandlerWithEvent, once: boolean }[]>()
+  #eventsListeners = new Map<string, { listener: IpcControllerEventHandler, once: boolean }[]>()
 
   constructor (name: string) {
     if (name.trim() === '') {
@@ -148,7 +149,7 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
     return channelGenerator(this.name, name).concat(InvokeChannelSuffix)
   }
 
-  async #ipcMainEventListener (channel: string, name: IpcControllerKey<Events>, event: Electron.IpcMainInvokeEvent, ...args: any) {
+  async #ipcMainEventListener (channel: string, name: IpcControllerKey<Events>, event: Electron.IpcMainEvent, ...args: any) {
     try {
       const trustHandler = this.trustHandler ?? TrustHandler
       if (!await trustHandler(this, name, 'event', event)) {
@@ -238,7 +239,7 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
    *
    * Like `handle()`, it will just pass the event object.
    */
-  handleWithEvent<K extends IpcControllerKey<Functions>> (name: K, handler: IpcControllerHandlerWithEvent<Functions[K]>) {
+  handleWithEvent<K extends IpcControllerKey<Functions>> (name: K, handler: IpcControllerInvokeHandler<Functions[K]>) {
     ipcMainIsNull(IpcController.ipcMain)
     const channel = this.#invokeChannel(name)
     IpcController.ipcMain.handle(channel, this.#handle.bind(this, channel, name, true, handler))
@@ -264,7 +265,7 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
   /**
    * Can only be called in the main process
    */
-  off<K extends IpcControllerKey<Events>> (event: K, listener?: IpcControllerHandlerWithEvent<Functions[K]>) {
+  off<K extends IpcControllerKey<Events>> (event: K, listener?: IpcControllerEventHandler<Functions[K]>) {
     ipcMainIsNull(IpcController.ipcMain)
 
     const handlers = (listener ? (this.#eventsListeners.get(event) ?? []) : []).filter((item) => item.listener !== listener)
@@ -282,14 +283,14 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
   /**
    * Can only be called in the main process
    */
-  on<K extends IpcControllerKey<Events>> (event: K, listener: IpcControllerHandlerWithEvent<Events[K]>) {
+  on<K extends IpcControllerKey<Events>> (event: K, listener: IpcControllerEventHandler<Events[K]>) {
     this.#addEventListener(event, listener)
   }
 
   /**
    * Can only be called in the main process
    */
-  once<K extends IpcControllerKey<Events>> (event: K, listener: IpcControllerHandlerWithEvent<Events[K]>) {
+  once<K extends IpcControllerKey<Events>> (event: K, listener: IpcControllerEventHandler<Events[K]>) {
     this.#addEventListener(event, listener, true)
   }
 

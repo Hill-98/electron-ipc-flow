@@ -49,14 +49,20 @@ function getGlobalIpcController (): GlobalIpcController {
 
 const callersHandler: ProxyHandler<IpcController> = {
   get (target, p) {
-    return target.invoke.bind(target, p as any)
+    if (typeof p === 'string') {
+      return target.invoke.bind(target, p)
+    }
+    return undefined
   },
 }
 
 const handlersHandler: ProxyHandler<IpcController> = {
   set (target, p, newValue) {
-    target.handle(p as any, newValue)
-    return true
+    if (typeof p === 'string') {
+      target.handle(p, newValue)
+      return true
+    }
+    return false
   },
 }
 
@@ -114,7 +120,7 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
     }
   }
 
-  #addEventListener (event: string, listener: IpcControllerHandler, once = false) {
+  #addEventListener (event: IpcControllerKey<Events>, listener: IpcControllerHandler, once = false) {
     ipcMainIsNull(IpcController.ipcMain)
 
     if (!this.#ipcMainEventListeners.has(event)) {
@@ -142,7 +148,7 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
     return channelGenerator(this.name, name).concat(InvokeChannelSuffix)
   }
 
-  async #ipcMainEventListener (channel: string, name: string, event: Electron.IpcMainInvokeEvent, ...args: any) {
+  async #ipcMainEventListener (channel: string, name: IpcControllerKey<Events>, event: Electron.IpcMainInvokeEvent, ...args: any) {
     try {
       const trustHandler = this.trustHandler ?? TrustHandler
       if (!await trustHandler(this.name, name, 'event', event)) {
@@ -168,7 +174,7 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
       return item.once
     })
     onceListeners.forEach((item) => {
-      this.off(name as any, item.listener as any)
+      this.off(name, item.listener)
     })
   }
 

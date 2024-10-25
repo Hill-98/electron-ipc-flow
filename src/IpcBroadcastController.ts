@@ -50,7 +50,7 @@ export class IpcBroadcastController<Events extends IpcBroadcastControllerEvents 
    */
   webContentsGetter: WebContentsGetter | undefined
 
-  #ipcRendererEventListeners = new Map<string, Function>()
+  #ipcRendererEventListeners = new Map<string, IpcBroadcastControllerListenerWithEvent>()
 
   #eventsListeners = new Map<string, { listener: IpcBroadcastControllerListenerWithEvent, once: boolean }[]>()
 
@@ -64,7 +64,7 @@ export class IpcBroadcastController<Events extends IpcBroadcastControllerEvents 
     this.name = name
   }
 
-  #addEventListener (event: string, listener: IpcBroadcastControllerListener, once = false) {
+  #addEventListener (event: IpcBroadcastControllerKey<Events>, listener: IpcBroadcastControllerListener, once = false) {
     if (!this.#ipcRendererEventListeners.has(event)) {
       const channel = this.#channel(event)
       const listener = this.#ipcRendererEventListener.bind(this, channel, event)
@@ -86,7 +86,7 @@ export class IpcBroadcastController<Events extends IpcBroadcastControllerEvents 
     return channelGenerator(this.name, event)
   }
 
-  #ipcRendererEventListener (channel: string, name: string, event: Electron.IpcRendererEvent, ...args: any) {
+  #ipcRendererEventListener (channel: string, name: IpcBroadcastControllerKey<Events>, event: Electron.IpcRendererEvent, ...args: any) {
     debug(`IpcController.#ipRendererEventListener: ${this.name}:${name}: received (channel: ${channel}) `)
     debug('params:', args)
 
@@ -101,7 +101,7 @@ export class IpcBroadcastController<Events extends IpcBroadcastControllerEvents 
       return item.once
     })
     onceListeners.forEach((item) => {
-      this.off(name as any, item.listener as any)
+      this.off(name, item.listener)
     })
   }
 
@@ -111,8 +111,9 @@ export class IpcBroadcastController<Events extends IpcBroadcastControllerEvents 
   off<K extends IpcBroadcastControllerKey<Events>> (event: K, listener?: IpcBroadcastControllerListenerWithEvent<Events[K]>) {
     const handlers = (listener ? (this.#eventsListeners.get(event) ?? []) : []).filter((item) => item.listener !== listener)
     if (handlers.length === 0) {
-      if (this.#ipcRendererEventListeners.has(event)) {
-        getGlobalIpcBroadcastController().off(this.name, event, this.#ipcRendererEventListeners.get(event) as any)
+      const listener = this.#ipcRendererEventListeners.get(event)
+      if (listener) {
+        getGlobalIpcBroadcastController().off(this.name, event, listener)
       }
       this.#eventsListeners.delete(event)
     } else {

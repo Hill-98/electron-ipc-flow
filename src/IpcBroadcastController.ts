@@ -22,14 +22,6 @@ export type WebContentsGetter = () => Promise<Electron.WebContents[]>
 
 const channelGenerator = (controller: string, name: string) => `IpcBroadcastController:${controller}:${name}`
 
-async function getAllWebContents () {
-  if (typeof process !== 'object' || process.type !== 'browser') {
-    throw new Error('The current process is not the main process')
-  }
-  const electron = await import('electron')
-  return electron.BrowserWindow.getAllWindows().map((w) => w.webContents)
-}
-
 function getGlobalIpcBroadcastController (): GlobalIpcBroadcastController {
   const global = typeof window !== 'undefined' ? window : globalThis
   isNull('IpcBroadcastController: Can\'t find the "globalThis.$IpcBroadcastController", Forgot to use "preloadInit" in the preload script?', global.$IpcBroadcastController)
@@ -37,15 +29,25 @@ function getGlobalIpcBroadcastController (): GlobalIpcBroadcastController {
 }
 
 /**
- * This controller can send messages from the main process to all/specific renderer processes
+ * This controller can send messages from the main process to renderer processes.
  *
- * By default, messages are sent to all renderers. You can set the `webContentsGetter` to send messages only to specific renderers.
+ * IpcBroadcastController has a static property WebContentsGetter, and each
+ * controller instance also has a webContentsGetter property. They are function that return Promise<Electron.WebContents[]>.
  *
- * The `webContentsGetter` needs to return a Promise that resolves to an array of `Electron.WebContents`.
+ * They are called before sending messages each time to get the renderers to which message can be sent.
  */
 export class IpcBroadcastController<Events extends IpcBroadcastControllerEvents = any> {
+  /**
+   * The global WebContentsGetter will be used if the controller instance does not define webContentsGetter.
+   * @see {webContentsGetter}
+   */
+  static WebContentsGetter: WebContentsGetter | undefined
+
   readonly name: string = ''
 
+  /**
+   * @see {WebContentsGetter}
+   */
   webContentsGetter: WebContentsGetter | undefined
 
   #ipcRendererEventListeners = new Map<string, Function>()
@@ -136,15 +138,19 @@ export class IpcBroadcastController<Events extends IpcBroadcastControllerEvents 
    * Can only be called in the main process
    */
   send<K extends IpcBroadcastControllerKey<Events>> (event: K, ...args: Parameters<Events[K]>) {
-    const getter = this.webContentsGetter ?? getAllWebContents
+    const getter = this.webContentsGetter ?? IpcBroadcastController.WebContentsGetter ?? (() => Promise.resolve([]))
     getter()
       .then((items) => {
+        const channel = this.#channel(event)
         items.forEach((webContents) => {
-          webContents.send(this.#channel(event), ...args)
+          debug(`IpcController.send: ${this.name}:${event}: send (channel: ${channel}) (webContents: ${webContents.id})`)
+          debug('args:', args)
+
+          webContents.send(channel, ...args)
         })
       })
       .catch((err) => {
-        console.error(err)
+        console.error('IpcBroadcastController.send: An error occurred in the webContents getter:', err)
       })
   }
 }

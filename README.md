@@ -63,7 +63,7 @@ import { calls as hello } from './hello.ts'
 console.log(await hello.say('World')) // Hello World!
 ```
 
-### The renderer send message to the main
+### Renderer send message to main
 
 ```typescript
 // main.ts
@@ -98,15 +98,20 @@ import hello from './hello.ts'
 hello.send('World')
 ```
 
-### The main send (broadcasts) message to the renderer.
+### Main send (broadcasts) message to renderer
 
 ```typescript
 // main.ts
+import { BrowserWindow } from 'electron'
+import { IpcBroadcastController } from 'electron-ipc-flow'
 import hello from './hello.ts'
 
-// You can define a getter to determine which renderers to send to.
-// hello.webContentsGetter = () => Promise.resolve([])
-hello.send('World') // Sent to all renderers by default
+// Define to send messages to those renderers. (global)
+IpcBroadcastController.WebContentsGetter = () => Promise.resolve(BrowserWindow.getAllWindows().map((win) => win.webContents))
+
+// Define to send messages to those renderers. (controller)
+// hello.webContentsGetter = () => Promise.resolve([BrowserWindow.getAllWindows()[0].webContents]) 
+hello.send('World')
 
 // hello.ts
 import { IpcBroadcastController } from 'electron-ipc-flow'

@@ -1,4 +1,5 @@
 import { deserializeError, serializeError } from 'serialize-error'
+import type { IpcController } from './IpcController.js'
 
 declare global {
   namespace globalThis {
@@ -19,7 +20,7 @@ export interface ErrorHandlerInterface {
   deserialize (errorObject: any): Error
 }
 
-export type TrustHandlerFunc = (controller: string, name: string, type: 'event' | 'invoke', event: Electron.IpcMainInvokeEvent) => Promise<boolean>
+export type TrustHandlerFunc = (controller: IpcController, name: string, type: 'event' | 'invoke', event: Electron.IpcMainInvokeEvent) => Promise<boolean>
 
 /**
  * The error handler used by `IpcController` defaults to using the
@@ -31,8 +32,7 @@ export const ErrorHandler: ErrorHandlerInterface = {
 }
 
 export function isDebug () {
-  const env = (typeof process === 'undefined' ? window : process.env)
-  return env.ELECTRON_IPC_FLOW_DEBUG === 'true'
+  return (typeof process === 'undefined' ? window : process.env).ELECTRON_IPC_FLOW_DEBUG === 'true'
 }
 
 export function isNull<T> (message: string, value?: T | null): asserts value is NonNullable<T> {
@@ -40,16 +40,6 @@ export function isNull<T> (message: string, value?: T | null): asserts value is 
     throw new TypeError(message)
   }
 }
-
-/**
- * Global trust handler
- *
- * `IpcController` calls the trust handler when it receives a call or event.
- * If the trust handler returns false, an exception is thrown to the renderer process: "*Blocked by trust handler.*"
- *
- * `IpcController` has `trustHandler` property that can be set to specific trust handler.
- */
-export let TrustHandler: TrustHandlerFunc = () => Promise.resolve(true)
 
 export function debug (...args: any[]) {
   if (!isDebug()) {
@@ -61,3 +51,13 @@ export function debug (...args: any[]) {
     console.debug(...args)
   }
 }
+
+/**
+ * Global trust handler.
+ *
+ * `IpcController` calls the trust handler when it receives a call or event.
+ * If the trust handler returns false, an exception is thrown to the renderer process: "*Blocked by trust handler.*".
+ *
+ * `IpcController` has `trustHandler` property that can be set to specific trust handler.
+ */
+export let TrustHandler: TrustHandlerFunc = () => Promise.resolve(true)

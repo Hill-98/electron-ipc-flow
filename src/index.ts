@@ -10,18 +10,18 @@ interface InitOptions {
    *
    * If you want to strictly control which IPC each renderer can use, you can disable auto register.
    */
-  autoRegisterIpcController: boolean
+  autoRegisterIpcController?: boolean
   /**
    * Global object required to initialize `IpcBroadcastController`, default is `false`.
    */
-  initBroadcastController: boolean
+  initBroadcastController?: boolean
 }
 
 /**
  * Initialize the required global objects (must be called in the preload script).
  */
-export const preloadInit = (contextBridge: Electron.ContextBridge, ipcRenderer: Electron.IpcRenderer, options?: Partial<InitOptions>) => {
-  const opt: InitOptions = {
+export function preloadInit (contextBridge: Electron.ContextBridge, ipcRenderer: Electron.IpcRenderer, options?: InitOptions) {
+  const opt: Required<InitOptions> = {
     autoRegisterIpcController: true,
     initBroadcastController: false,
     ...(options ?? {}),

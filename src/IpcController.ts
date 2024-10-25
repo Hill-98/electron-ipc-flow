@@ -76,7 +76,7 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
   /**
    * `ipcMain` exported by the `electron` package, which must be set before using the controller.
    */
-  static ipcMain: Electron.IpcMain | null = null
+  static ipcMain: Electron.IpcMain | undefined
 
   readonly name: string = ''
 
@@ -151,7 +151,7 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
   async #ipcMainEventListener (channel: string, name: IpcControllerKey<Events>, event: Electron.IpcMainInvokeEvent, ...args: any) {
     try {
       const trustHandler = this.trustHandler ?? TrustHandler
-      if (!await trustHandler(this.name, name, 'event', event)) {
+      if (!await trustHandler(this, name, 'event', event)) {
         debug(`IpcController.#ipcMainEventListener: ${this.name}:${name}: blocked (channel: ${channel})`)
         return
       }
@@ -184,7 +184,7 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
 
     try {
       const trustHandler = this.trustHandler ?? TrustHandler
-      if (!await trustHandler(this.name, name, 'invoke', event)) {
+      if (!await trustHandler(this, name, 'invoke', event)) {
         debug(`IpcController.#handle: ${this.name}:${name}: blocked (channel: ${channel})`)
         return {
           status: Status.error,
@@ -315,7 +315,7 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
   }
 }
 
-export const preloadInit = function preloadInit (contextBridge: Electron.ContextBridge, ipcRenderer: Electron.IpcRenderer, autoRegister = false) {
+export function preloadInit (contextBridge: Electron.ContextBridge, ipcRenderer: Electron.IpcRenderer, autoRegister: boolean) {
   const obj = {
     name: 'GlobalIpcController',
     invoke (controllerName: string, name: string, ...args: any[]) {

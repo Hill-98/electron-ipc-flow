@@ -156,7 +156,7 @@ export class IpcBroadcastController<Events extends IpcBroadcastControllerEvents 
   }
 }
 
-export const preloadInit = function preloadInit (contextBridge: Electron.ContextBridge, ipcRenderer: Electron.IpcRenderer) {
+export function preloadInit (contextBridge: Electron.ContextBridge, ipcRenderer: Electron.IpcRenderer) {
   const obj = {
     name: 'GlobalIpcBroadcastController',
     off (controllerName: string, name: string, listener: IpcBroadcastControllerListenerWithEvent) {

@@ -6,7 +6,7 @@ declare global {
     var $IpcController: GlobalIpcController | undefined
 
     interface GlobalIpcController {
-      invoke (controllerName: string, name: string, ...args: any): Promise<any>
+      invoke(controllerName: string, name: string, ...args: any): Promise<InvokeHandlerReturnValue>
 
       register: (name: string) => void | undefined
 
@@ -20,9 +20,9 @@ export enum Status {
   result
 }
 
-export interface InvokeHandlerReturnValue {
+export interface InvokeHandlerReturnValue<T = any> {
   status: Status
-  value: any
+  value: T
 }
 
 export type IpcControllerHandler = (...args: any[]) => any
@@ -30,11 +30,8 @@ export type IpcControllerEvents = Record<string, IpcControllerHandler>
 export type IpcControllerFunctions = Record<string, IpcControllerHandler>
 export type IpcControllerHandlerWithEvent<T extends IpcControllerHandler = IpcControllerHandler> = (event: Electron.IpcMainInvokeEvent, ...args: Parameters<T>) => ReturnType<T>
 export type IpcControllerKey<T extends IpcControllerFunctions | IpcControllerEvents> = Extract<keyof T, string>;
-export type InvokeReturnType<T extends IpcControllerHandler> = ReturnType<T> extends Promise<any>
-  ? ReturnType<T>
-  : Promise<ReturnType<T>>
 export type IpcControllerCallers<T extends IpcControllerFunctions> = {
-  readonly [P in keyof T]: (...args: Parameters<T[P]>) => InvokeReturnType<T[P]>
+  readonly [P in keyof T]: (...args: Parameters<T[P]>) => Promise<Awaited<ReturnType<T[P]>>>
 }
 
 const EventChannelSuffix = ':event'
@@ -244,8 +241,18 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
   /**
    * Can only be called in the renderer process
    */
-  invoke<K extends IpcControllerKey<Functions>> (name: K, ...args: Parameters<Functions[K]>): InvokeReturnType<Functions[K]> {
-    return getGlobalIpcController().invoke(this.name, name, ...args) as InvokeReturnType<Functions[K]>
+  async invoke<K extends IpcControllerKey<Functions>> (name: K, ...args: Parameters<Functions[K]>): Promise<Awaited<ReturnType<Functions[K]>>> {
+    const result = await getGlobalIpcController().invoke(this.name, name, ...args)
+
+    debug(`IpcController.invoke: ${this.name}:${name}: received result (channel: ${this.#invokeChannel(name)})`)
+    debug('status:', result.status)
+    debug('value:', result.value)
+
+    if (result.status === Status.error) {
+      throw ErrorHandler.deserialize(result.value)
+    }
+
+    return result.value
   }
 
   /**
@@ -317,11 +324,6 @@ export const preloadInit = function preloadInit (contextBridge: Electron.Context
       debug('params:', args)
 
       return ipcRenderer.invoke(channel, ...args)
-        .then((data: InvokeHandlerReturnValue) => {
-          debug(`${funcName}: received: ${controllerName}:${name} (channel: ${channel})`)
-          debug('data:', data)
-          return data.status === Status.error ? Promise.reject(ErrorHandler.deserialize(data.value)) : Promise.resolve(data.value)
-        })
     },
     register (name: string) {
       if (name.trim() !== '' && !IpcControllerRegistered.has(name)) {

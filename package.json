@@ -25,12 +25,12 @@
     "scripts": {
         "build": "vite build && vite build --mode preload && dts-bundle-generator --no-banner --no-check -o ./dist/index.d.ts ./src/index.ts",
         "check": "tsc --noEmit",
-        "test": "echo TODO..."
+        "test": "node tests/test.mjs"
     },
     "devDependencies": {
-        "@types/node": "latest",
+        "@types/node": "^22.0.0",
         "dts-bundle-generator": "^9.5.1",
-        "electron": "latest",
+        "electron": "^33.0.0",
         "serialize-error": "^11.0.3",
         "typescript": "^5.6.3",
         "vite": "^5.4.10"

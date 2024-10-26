@@ -40,14 +40,14 @@ type Functions = {
   say(who: string): string
 }
 
-export const controller1 = new IpcController<Functions>('hello')
-export const calls = controller1.calls // Proxy object
-export const handlers = controller1.handlers // Proxy object
+export const controller = new IpcController<Functions>('hello')
+export const calls = controller.calls // Proxy object
+export const handlers = controller.handlers // Proxy object
 
 // preload.ts
 import { contextBridge, ipcRenderer } from 'electron/renderer'
 import { preloadInit } from 'electron-ipc-flow' // need bundler
-import { controller1 as hello } from './hello.ts'
+import { controller as hello } from './hello.ts'
 
 preloadInit(contextBridge, ipcRenderer, {
   autoRegisterIpcController: false, // Optional, default to true.
@@ -147,7 +147,7 @@ If you don't want to use TypeScript, you can use JSDoc to get type support:
  */
 
 /** @type {import('electron-ipc-flow').IpcController<Functions>} */
-const controller1 = new IpcController('hello')
+const controller = new IpcController('hello')
 ```
 
 ---

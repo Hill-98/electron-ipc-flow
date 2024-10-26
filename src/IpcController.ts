@@ -1,4 +1,5 @@
 import isPromise from 'is-promise'
+import type { AnyFunction, EventFunction, FunctionsObj, StringKey } from './common.ts'
 import { ErrorHandler, debug, isNull } from './common.ts'
 
 declare global {
@@ -26,25 +27,11 @@ export interface InvokeHandlerReturnValue<T = any> {
   value: T
 }
 
-export type IpcControllerHandler = (...args: any[]) => any
+export type MainInvokeHandler<T extends AnyFunction = AnyFunction> = EventFunction<Electron.IpcMainInvokeEvent, T>
 
-export type IpcControllerEvents = Record<string, IpcControllerHandler>
+export type MainEventListener<T extends AnyFunction = AnyFunction> = EventFunction<Electron.IpcMainEvent, T>
 
-export type IpcControllerFunctions = Record<string, IpcControllerHandler>
-
-export type IpcControllerInvokeHandler<T extends IpcControllerHandler = IpcControllerHandler> = (
-  event: Electron.IpcMainInvokeEvent,
-  ...args: Parameters<T>
-) => ReturnType<T>
-
-export type IpcControllerEventHandler<T extends IpcControllerHandler = IpcControllerHandler> = (
-  event: Electron.IpcMainEvent,
-  ...args: Parameters<T>
-) => ReturnType<T>
-
-export type IpcControllerKey<T extends IpcControllerFunctions | IpcControllerEvents> = Extract<keyof T, string>
-
-export type IpcControllerCallers<T extends IpcControllerFunctions> = {
+export type IpcControllerCallers<T extends FunctionsObj> = {
   readonly [P in keyof T]: (...args: Parameters<T[P]>) => Promise<Awaited<ReturnType<T[P]>>>
 }
 
@@ -100,7 +87,7 @@ const handlersHandler: ProxyHandler<IpcController> = {
  *
  * `calls` and `handlers` are `Proxy` objects used for elegantly calling `invoke()` and `handle()`.
  */
-export class IpcController<Functions extends IpcControllerFunctions = any, Events extends IpcControllerEvents = any> {
+export class IpcController<Functions extends FunctionsObj = any, Events extends FunctionsObj = any> {
   /**
    * `ipcMain` exported by the `electron` package, which must be set before using the controller.
    */
@@ -135,9 +122,9 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
    */
   trustHandler: TrustHandlerFunc | undefined
 
-  #ipcMainEventListeners = new Map<string, IpcControllerEventHandler>()
+  #ipcMainEventListeners = new Map<string, MainEventListener>()
 
-  #eventsListeners = new Map<string, { listener: IpcControllerEventHandler; once: boolean }[]>()
+  #eventsListeners = new Map<string, { listener: MainEventListener; once: boolean }[]>()
 
   constructor(name: string) {
     if (name.trim() === '') {
@@ -152,7 +139,7 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
     }
   }
 
-  #addEventListener(event: IpcControllerKey<Events>, listener: IpcControllerHandler, once = false) {
+  #addEventListener(event: StringKey<Events>, listener: AnyFunction, once = false) {
     ipcMainIsNull(IpcController.ipcMain)
 
     if (!this.#ipcMainEventListeners.has(event)) {
@@ -180,12 +167,7 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
     return channelGenerator(this.name, name).concat(InvokeChannelSuffix)
   }
 
-  async #ipcMainEventListener(
-    channel: string,
-    name: IpcControllerKey<Events>,
-    event: Electron.IpcMainEvent,
-    ...args: any
-  ) {
+  async #ipcMainEventListener(channel: string, name: StringKey<Events>, event: Electron.IpcMainEvent, ...args: any) {
     try {
       const trust = (this.trustHandler ?? IpcController.TrustHandler)(this, name, 'event', event)
       if (trust === false || !(await trust)) {
@@ -219,7 +201,7 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
     channel: string,
     name: string,
     passEvent: boolean,
-    func: IpcControllerHandler,
+    func: AnyFunction,
     event: Electron.IpcMainInvokeEvent,
     ...args: any
   ): Promise<InvokeHandlerReturnValue> {
@@ -274,7 +256,7 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
   /**
    * Can only be called in the main process.
    */
-  handle<K extends IpcControllerKey<Functions>>(name: K, handler: Functions[K]) {
+  handle<K extends StringKey<Functions>>(name: K, handler: Functions[K]) {
     ipcMainIsNull(IpcController.ipcMain)
     const channel = this.#invokeChannel(name)
     IpcController.ipcMain.handle(channel, this.#handle.bind(this, channel, name, false, handler))
@@ -285,7 +267,7 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
    *
    * Like `handle()`, it will just pass the event object.
    */
-  handleWithEvent<K extends IpcControllerKey<Functions>>(name: K, handler: IpcControllerInvokeHandler<Functions[K]>) {
+  handleWithEvent<K extends StringKey<Functions>>(name: K, handler: MainInvokeHandler<Functions[K]>) {
     ipcMainIsNull(IpcController.ipcMain)
     const channel = this.#invokeChannel(name)
     IpcController.ipcMain.handle(channel, this.#handle.bind(this, channel, name, true, handler))
@@ -294,7 +276,7 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
   /**
    * Can only be called in the renderer process.
    */
-  async invoke<K extends IpcControllerKey<Functions>>(
+  async invoke<K extends StringKey<Functions>>(
     name: K,
     ...args: Parameters<Functions[K]>
   ): Promise<Awaited<ReturnType<Functions[K]>>> {
@@ -314,7 +296,7 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
   /**
    * Can only be called in the main process.
    */
-  off<K extends IpcControllerKey<Events>>(event: K, listener?: IpcControllerEventHandler<Functions[K]>) {
+  off<K extends StringKey<Events>>(event: K, listener?: MainEventListener<Functions[K]>) {
     ipcMainIsNull(IpcController.ipcMain)
 
     const handlers = (listener ? (this.#eventsListeners.get(event) ?? []) : []).filter(
@@ -334,21 +316,21 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
   /**
    * Can only be called in the main process.
    */
-  on<K extends IpcControllerKey<Events>>(event: K, listener: IpcControllerEventHandler<Events[K]>) {
+  on<K extends StringKey<Events>>(event: K, listener: MainEventListener<Events[K]>) {
     this.#addEventListener(event, listener)
   }
 
   /**
    * Can only be called in the main process.
    */
-  once<K extends IpcControllerKey<Events>>(event: K, listener: IpcControllerEventHandler<Events[K]>) {
+  once<K extends StringKey<Events>>(event: K, listener: MainEventListener<Events[K]>) {
     this.#addEventListener(event, listener, true)
   }
 
   /**
    * Can only be called in the renderer process.
    */
-  send<K extends IpcControllerKey<Events>>(event: K, ...args: Parameters<Events[K]>) {
+  send<K extends StringKey<Events>>(event: K, ...args: Parameters<Events[K]>) {
     getGlobalIpcController().send(this.name, event, ...args)
   }
 

@@ -19,6 +19,14 @@ export interface ErrorHandlerInterface {
   deserialize(errorObject: any): Error
 }
 
+export type AnyFunction = (...args: any[]) => any
+
+export type EventFunction<T, K extends AnyFunction = AnyFunction> = (event: T, ...args: Parameters<K>) => ReturnType<K>
+
+export type FunctionsObj = Record<string, AnyFunction>
+
+export type StringKey<T> = Extract<keyof T, string>
+
 /**
  * The error handler used by `IpcController` defaults to using the
  * `serialize-error` package to serialize and deserialize error objects.

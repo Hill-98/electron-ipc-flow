@@ -108,6 +108,11 @@ assert(await runTest(await buildTest(join(__dirname, 'IpcBroadcastControllerTest
 
 assert(await runTest(await buildTest(join(__dirname, 'IpcControllerTest'))), 'IpcControllerTest')
 
+assert(
+  await runTest(await buildTest(join(__dirname, 'IpcBroadcastControllerSendToHostTest'))),
+  'IpcBroadcastControllerSendToHostTest',
+)
+
 assert(await runTest(await buildTest(join(__dirname, 'IpcControllerRegisterTest'))), 'IpcControllerRegisterTest')
 
 assert(await runTest(await buildTest(join(__dirname, 'TrustHandlerTest'))), 'TrustHandlerTest')

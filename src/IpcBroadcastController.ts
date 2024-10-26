@@ -120,19 +120,44 @@ export class IpcBroadcastController<Events extends IpcBroadcastControllerEvents 
   }
 
   #send<K extends IpcBroadcastControllerKey<Events>>(
-    items: Electron.WebContents[],
+    frameId: number | [number, number] | null,
     event: K,
     ...args: Parameters<Events[K]>
   ) {
-    const channel = this.#channel(event)
-    for (const webContents of items) {
-      debug(`IpcController.send: ${this.name}:${event}: send (channel: ${channel}) (webContents: ${webContents.id})`)
-      debug('args:', args)
-      try {
-        webContents.send(channel, ...args)
-      } catch (err) {
-        console.error('IpcBroadcastController.#send: An error occurred in the webContents.send:', err)
+    const sender = (items: Electron.WebContents[]) => {
+      const channel = this.#channel(event)
+      for (const webContents of items) {
+        debug(
+          `IpcController.#send: ${this.name}:${event}: send (channel: ${channel}) (webContents: ${webContents.id} (frameId: ${frameId}))`,
+        )
+        debug('args:', args)
+        try {
+          if (frameId === null) {
+            webContents.send(channel, ...args)
+          } else {
+            webContents.sendToFrame(frameId, channel, ...args)
+          }
+        } catch (err) {
+          console.error('IpcBroadcastController.#send: An error occurred in the webContents.send:', err)
+        }
       }
+    }
+
+    try {
+      const getter = (this.webContentsGetter ?? IpcBroadcastController.WebContentsGetter ?? (() => []))()
+      if (isPromise(getter)) {
+        getter
+          .then((items) => {
+            sender(items)
+          })
+          .catch((err) => {
+            console.error('IpcBroadcastController.#send: An error occurred in the webContents getter:', err)
+          })
+      } else {
+        sender(getter)
+      }
+    } catch (err) {
+      console.error('IpcBroadcastController.#send: An error occurred in the webContents getter:', err)
     }
   }
 
@@ -181,22 +206,18 @@ export class IpcBroadcastController<Events extends IpcBroadcastControllerEvents 
    * Can only be called in the main process.
    */
   send<K extends IpcBroadcastControllerKey<Events>>(event: K, ...args: Parameters<Events[K]>) {
-    try {
-      const getter = (this.webContentsGetter ?? IpcBroadcastController.WebContentsGetter ?? (() => []))()
-      if (isPromise(getter)) {
-        getter
-          .then((items) => {
-            this.#send(items, event, ...args)
-          })
-          .catch((err) => {
-            console.error('IpcBroadcastController.send: An error occurred in the webContents getter:', err)
-          })
-      } else {
-        this.#send(getter, event, ...args)
-      }
-    } catch (err) {
-      console.error('IpcBroadcastController.send: An error occurred in the webContents getter:', err)
-    }
+    this.#send(null, event, ...args)
+  }
+
+  /**
+   * Can only be called in the main process.
+   */
+  sendToFrame<K extends IpcBroadcastControllerKey<Events>>(
+    frameId: number | [number, number],
+    event: K,
+    ...args: Parameters<Events[K]>
+  ) {
+    this.#send(frameId, event, ...args)
   }
 }
 

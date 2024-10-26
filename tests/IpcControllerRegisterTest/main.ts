@@ -20,8 +20,8 @@ async function createBrowserWindow() {
   return win
 }
 
-async function getWebContentsBody(webContents: Electron.WebContents): Promise<string[]> {
-  return webContents.executeJavaScript('document.body.textContent.trim().split("|")')
+function getWebContentsBody(webContents: Electron.WebContents) {
+  return webContents.executeJavaScript('document.body.textContent.trim().split("|")') as Promise<string[]>
 }
 
 function includeCount(strs: string[], need: string): number {

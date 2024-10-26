@@ -105,7 +105,7 @@ import { IpcBroadcastController } from 'electron-ipc-flow'
 import hello from './hello.ts'
 
 // Define to send messages to those renderers. (global)
-IpcBroadcastController.WebContentsGetter = () => Promise.resolve(BrowserWindow.getAllWindows().map((win) => win.webContents))
+IpcBroadcastController.WebContentsGetter = () => BrowserWindow.getAllWindows().map((win) => win.webContents)
 
 // Define to send messages to those renderers. (controller1)
 // hello.webContentsGetter = () => Promise.resolve([BrowserWindow.getAllWindows()[0].webContents]) 

@@ -1,45 +1,38 @@
 {
-    "name": "electron-ipc-flow",
-    "version": "2.0.0",
-    "description": "Fluently and type-safely write IPC for Electron",
-    "keywords": [
-        "electron",
-        "ipc",
-        "typescript",
-        "type-safe"
-    ],
-    "files": [
-        "./dist"
-    ],
-    "main": "./dist/index.js",
-    "module": "./dist/index.mjs",
-    "types": "./dist/index.d.ts",
-    "homepage": "https://github.com/Hill-98/electron-ipc-flow",
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/Hill-98/electron-ipc-flow.git"
-    },
-    "bugs": "https://github.com/Hill-98/electron-ipc-flow/issues",
-    "author": "Zhong Lufan <lufanzhong@gmail.com>",
-    "license": "MIT",
-    "scripts": {
-        "build": "vite build && vite build --mode preload && dts-bundle-generator --no-banner --no-check -o ./dist/index.d.ts ./src/index.ts",
-        "check": "tsc --noEmit",
-        "test": "node tests/test.mjs"
-    },
-    "devDependencies": {
-        "@types/node": "^20.0.0",
-        "dts-bundle-generator": "^9.5.1",
-        "electron": "^33.0.0",
-        "is-promise": "^4.0.0",
-        "serialize-error": "^11.0.3",
-        "typescript": "^5.6.3",
-        "vite": "^5.4.10"
-    },
-    "peerDependencies": {
-        "electron": ">= 12.0.0"
-    },
-    "volta": {
-        "node": "20.18.0"
-    }
+  "name": "electron-ipc-flow",
+  "version": "2.0.0",
+  "description": "Fluently and type-safely write IPC for Electron",
+  "keywords": ["electron", "ipc", "typescript", "type-safe"],
+  "files": ["./dist"],
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "homepage": "https://github.com/Hill-98/electron-ipc-flow",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Hill-98/electron-ipc-flow.git"
+  },
+  "bugs": "https://github.com/Hill-98/electron-ipc-flow/issues",
+  "author": "Zhong Lufan <lufanzhong@gmail.com>",
+  "license": "MIT",
+  "scripts": {
+    "build": "vite build && vite build --mode preload && dts-bundle-generator --no-banner --no-check -o ./dist/index.d.ts ./src/index.ts",
+    "check": "tsc --noEmit",
+    "test": "node tests/test.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "dts-bundle-generator": "^9.5.1",
+    "electron": "^33.0.0",
+    "is-promise": "^4.0.0",
+    "serialize-error": "^11.0.3",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.10"
+  },
+  "peerDependencies": {
+    "electron": ">= 12.0.0"
+  },
+  "volta": {
+    "node": "20.18.0"
+  }
 }

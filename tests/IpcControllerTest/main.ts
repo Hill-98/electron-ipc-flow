@@ -1,12 +1,12 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
 import assert from 'node:assert'
 import path from 'node:path'
+import { BrowserWindow, app, ipcMain } from 'electron'
 import { IpcController } from '../../src/index.js'
 import { controller, handlers } from './controller.js'
 
 const CONTROLLER_EVENT_RESULTS: string[] = []
 
-async function createBrowserWindow () {
+async function createBrowserWindow() {
   const win = new BrowserWindow({
     width: 800,
     height: 600,
@@ -28,7 +28,7 @@ function includeCount(strs: string[], need: string): number {
 }
 
 async function sleep(ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms))
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 async function runTest() {
@@ -75,7 +75,10 @@ app.on('window-all-closed', () => {
   app.quit()
 })
 
-app.whenReady().then(runTest).catch((err) => {
-  console.error(err)
-  process.exit(1)
-})
+app
+  .whenReady()
+  .then(runTest)
+  .catch((err) => {
+    console.error(err)
+    process.exit(1)
+  })

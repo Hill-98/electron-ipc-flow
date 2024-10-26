@@ -1,13 +1,11 @@
 import path from 'node:path'
-import { defineConfig, UserConfig } from 'vite'
+import { type UserConfig, defineConfig } from 'vite'
 
 export default defineConfig((config) => {
   const mode = config.mode
-  if (mode === 'test') {
-    console.log(config)
-    return config
-  }
+
   const isPreload = mode === 'preload'
+
   return {
     build: {
       emptyOutDir: !isPreload,
@@ -20,7 +18,7 @@ export default defineConfig((config) => {
       rollupOptions: {
         external: ['electron', 'electron/renderer'],
       },
-      target: 'ESNext'
+      target: 'ESNext',
     },
   } satisfies UserConfig
 })

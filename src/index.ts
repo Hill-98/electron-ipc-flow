@@ -1,6 +1,6 @@
-import { isDebug } from './common.ts'
 import { preloadInit as initIpcBroadcastController } from './IpcBroadcastController.ts'
 import { preloadInit as initIpcController } from './IpcController.ts'
+import { isDebug } from './common.ts'
 
 interface InitOptions {
   /**
@@ -29,7 +29,11 @@ export interface PreloadInitResult {
 /**
  * Initialize the required global objects (must be called in the preload script).
  */
-export function preloadInit (contextBridge: Electron.ContextBridge, ipcRenderer: Electron.IpcRenderer, options?: InitOptions) {
+export function preloadInit(
+  contextBridge: Electron.ContextBridge,
+  ipcRenderer: Electron.IpcRenderer,
+  options?: InitOptions,
+) {
   const opt: Required<InitOptions> = {
     autoRegisterIpcController: true,
     isolatedWorldId: 0,
@@ -46,13 +50,13 @@ export function preloadInit (contextBridge: Electron.ContextBridge, ipcRenderer:
   if (opt.initBroadcastController) {
     items.push(initIpcBroadcastController(ipcRenderer))
   }
-  items.forEach((item) => {
+  for (const item of items) {
     if (opt.isolatedWorldId > 0) {
       contextBridge.exposeInIsolatedWorld(opt.isolatedWorldId, item.key, item.api)
     } else {
       contextBridge.exposeInMainWorld(item.key, item.api)
     }
-  })
+  }
 }
 
 export { IpcController } from './IpcController.ts'

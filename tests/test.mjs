@@ -1,20 +1,22 @@
 import assert from 'node:assert'
-import child_process from 'node:child_process'
+import { spawn } from 'node:child_process'
 import fs from 'node:fs'
 import module from 'node:module'
-import path from 'node:path'
+import { basename, join } from 'node:path'
 import { build } from 'vite'
 
-const ELECTRON_BIN = path.join(import.meta.dirname, '../node_modules/electron/dist/electron'.concat((process.platform === 'win32' ? '.exe' : '')))
+const __dirname = import.meta.dirname
+
+const ELECTRON_BIN = join(__dirname, '../node_modules/.bin/electron'.concat(process.platform === 'win32' ? '.cmd' : ''))
 
 /**
  * @param {string} dir
  * @returns {Promise<string>}
  */
 async function buildTest(dir) {
-  const main = path.join(dir, 'main.ts')
-  const preload = path.join(dir, 'preload.ts')
-  const output = path.join(path.join(import.meta.dirname, '../dist', path.basename(dir)))
+  const main = join(dir, 'main.ts')
+  const preload = join(dir, 'preload.ts')
+  const output = join(join(__dirname, '../dist', basename(dir)))
 
   if (fs.existsSync(output)) {
     fs.rmSync(output, { recursive: true })
@@ -28,7 +30,7 @@ async function buildTest(dir) {
       emptyOutDir: false,
       lib: {
         entry: main,
-        fileName: path.parse(main).name,
+        fileName: 'main',
         formats: ['cjs'],
       },
       minify: false,
@@ -37,7 +39,7 @@ async function buildTest(dir) {
           ...module.builtinModules,
           ...module.builtinModules.map((m) => `node:${m}`),
           'electron',
-          'electron/renderer'
+          'electron/renderer',
         ],
       },
       outDir: output,
@@ -54,15 +56,12 @@ async function buildTest(dir) {
       emptyOutDir: false,
       lib: {
         entry: preload,
-        fileName: path.parse(preload).name,
+        fileName: 'preload',
         formats: ['cjs'],
       },
       minify: false,
       rollupOptions: {
-        external: [
-          'electron',
-          'electron/renderer',
-        ],
+        external: ['electron', 'electron/renderer'],
       },
       outDir: output,
       sourcemap: 'inline',
@@ -94,7 +93,7 @@ async function buildTest(dir) {
  */
 async function runTest(dir) {
   return new Promise((resolve, reject) => {
-    const electron = child_process.spawn(ELECTRON_BIN, [path.join(dir, 'main.js')], {
+    const electron = spawn(ELECTRON_BIN, [join(dir, 'main.js')], {
       shell: true,
       stdio: 'inherit',
     })
@@ -105,12 +104,12 @@ async function runTest(dir) {
   })
 }
 
-assert(await runTest(await buildTest(path.join(import.meta.dirname, 'IpcBroadcastControllerTest'))), 'IpcBroadcastControllerTest')
+assert(await runTest(await buildTest(join(__dirname, 'IpcBroadcastControllerTest'))), 'IpcBroadcastControllerTest')
 
-assert(await runTest(await buildTest(path.join(import.meta.dirname, 'IpcControllerTest'))), 'IpcControllerTest')
+assert(await runTest(await buildTest(join(__dirname, 'IpcControllerTest'))), 'IpcControllerTest')
 
-assert(await runTest(await buildTest(path.join(import.meta.dirname, 'IpcControllerRegisterTest'))), 'IpcControllerRegisterTest')
+assert(await runTest(await buildTest(join(__dirname, 'IpcControllerRegisterTest'))), 'IpcControllerRegisterTest')
 
-assert(await runTest(await buildTest(path.join(import.meta.dirname, 'TrustHandlerTest'))), 'TrustHandlerTest')
+assert(await runTest(await buildTest(join(__dirname, 'TrustHandlerTest'))), 'TrustHandlerTest')
 
 console.log('* All tests pass!')

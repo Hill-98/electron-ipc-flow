@@ -14,9 +14,9 @@ declare namespace NodeJS {
 }
 
 export interface ErrorHandlerInterface {
-  serialize (error: any): object
+  serialize(error: any): object
 
-  deserialize (errorObject: any): Error
+  deserialize(errorObject: any): Error
 }
 
 /**
@@ -31,17 +31,17 @@ export const ErrorHandler: ErrorHandlerInterface = {
   deserialize: deserializeError,
 }
 
-export function isDebug () {
+export function isDebug() {
   return (typeof process === 'undefined' ? window : process.env).ELECTRON_IPC_FLOW_DEBUG === 'true'
 }
 
-export function isNull<T> (message: string, value?: T | null): asserts value is NonNullable<T> {
+export function isNull<T>(message: string, value?: T | null): asserts value is NonNullable<T> {
   if (typeof value === 'undefined' || value === null) {
     throw new TypeError(message)
   }
 }
 
-export function debug (...args: any[]) {
+export function debug(...args: any[]) {
   if (!isDebug()) {
     return
   }

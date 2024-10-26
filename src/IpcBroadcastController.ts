@@ -7,28 +7,34 @@ declare global {
     var $IpcBroadcastController: GlobalIpcBroadcastController | undefined
 
     interface GlobalIpcBroadcastController {
-      off (controllerName: string, name: string, listener: IpcBroadcastControllerListenerWithEvent): void
+      off(controllerName: string, name: string, listener: IpcBroadcastControllerListenerWithEvent): void
 
-      on (controllerName: string, name: string, listener: IpcBroadcastControllerListenerWithEvent): void
+      on(controllerName: string, name: string, listener: IpcBroadcastControllerListenerWithEvent): void
     }
   }
 }
 
 export type IpcBroadcastControllerListener = (...args: any[]) => any
 export type IpcBroadcastControllerEvents = Record<string, IpcBroadcastControllerListener>
-export type IpcBroadcastControllerListenerWithEvent<T extends IpcBroadcastControllerListener = IpcBroadcastControllerListener> = (event: Electron.IpcRendererEvent, ...args: Parameters<T>) => ReturnType<T>
-export type IpcBroadcastControllerKey<T extends IpcBroadcastControllerEvents> = Extract<keyof T, string>;
+export type IpcBroadcastControllerListenerWithEvent<
+  T extends IpcBroadcastControllerListener = IpcBroadcastControllerListener,
+> = (event: Electron.IpcRendererEvent, ...args: Parameters<T>) => ReturnType<T>
+export type IpcBroadcastControllerKey<T extends IpcBroadcastControllerEvents> = Extract<keyof T, string>
 
 export type WebContentsGetter = () => Promise<Electron.WebContents[]> | Electron.WebContents[]
 
 const channelGenerator = (controller: string, name: string) => `IpcBroadcastController:${controller}:${name}`
 
-function getGlobalIpcBroadcastController (): GlobalIpcBroadcastController {
+function getGlobalIpcBroadcastController(): GlobalIpcBroadcastController {
   const global = typeof window !== 'undefined' ? window : globalThis
-  isNull('IpcBroadcastController: Can\'t find the "globalThis.$IpcBroadcastController", Forgot to use "preloadInit" in the preload script?', global.$IpcBroadcastController)
+  isNull(
+    'IpcBroadcastController: Can\'t find the "globalThis.$IpcBroadcastController", Forgot to use "preloadInit" in the preload script?',
+    global.$IpcBroadcastController,
+  )
   return global.$IpcBroadcastController
 }
 
+// noinspection JSUnusedGlobalSymbols
 /**
  * This controller can send messages from the main process to renderer processes.
  *
@@ -53,9 +59,9 @@ export class IpcBroadcastController<Events extends IpcBroadcastControllerEvents 
 
   #ipcRendererEventListeners = new Map<string, IpcBroadcastControllerListenerWithEvent>()
 
-  #eventsListeners = new Map<string, { listener: IpcBroadcastControllerListenerWithEvent, once: boolean }[]>()
+  #eventsListeners = new Map<string, { listener: IpcBroadcastControllerListenerWithEvent; once: boolean }[]>()
 
-  constructor (name: string) {
+  constructor(name: string) {
     if (name.trim() === '') {
       throw new SyntaxError('IpcBroadcastController: "name" cannot be an empty string.')
     }
@@ -65,7 +71,7 @@ export class IpcBroadcastController<Events extends IpcBroadcastControllerEvents 
     this.name = name
   }
 
-  #addEventListener (event: IpcBroadcastControllerKey<Events>, listener: IpcBroadcastControllerListener, once = false) {
+  #addEventListener(event: IpcBroadcastControllerKey<Events>, listener: IpcBroadcastControllerListener, once = false) {
     if (!this.#ipcRendererEventListeners.has(event)) {
       const channel = this.#channel(event)
       const listener = this.#ipcRendererEventListener.bind(this, channel, event)
@@ -83,11 +89,16 @@ export class IpcBroadcastController<Events extends IpcBroadcastControllerEvents 
     this.#eventsListeners.set(event, listeners)
   }
 
-  #channel (event: string) {
+  #channel(event: string) {
     return channelGenerator(this.name, event)
   }
 
-  #ipcRendererEventListener (channel: string, name: IpcBroadcastControllerKey<Events>, event: Electron.IpcRendererEvent, ...args: any) {
+  #ipcRendererEventListener(
+    channel: string,
+    name: IpcBroadcastControllerKey<Events>,
+    event: Electron.IpcRendererEvent,
+    ...args: any
+  ) {
     debug(`IpcController.#ipRendererEventListener: ${this.name}:${name}: received (channel: ${channel}) `)
     debug('args:', args)
 
@@ -96,19 +107,25 @@ export class IpcBroadcastController<Events extends IpcBroadcastControllerEvents 
       try {
         item.listener(event, ...args)
       } catch (error) {
-        debug(`IpcBroadcastController.#ipRendererEventListener: ${this.name}:${name}: catch error (channel: ${channel}) `)
+        debug(
+          `IpcBroadcastController.#ipRendererEventListener: ${this.name}:${name}: catch error (channel: ${channel}) `,
+        )
         debug('error:', error)
       }
       return item.once
     })
-    onceListeners.forEach((item) => {
+    for (const item of onceListeners) {
       this.off(name, item.listener)
-    })
+    }
   }
 
-  #send<K extends IpcBroadcastControllerKey<Events>> (items: Electron.WebContents[], event: K, ...args: Parameters<Events[K]>) {
+  #send<K extends IpcBroadcastControllerKey<Events>>(
+    items: Electron.WebContents[],
+    event: K,
+    ...args: Parameters<Events[K]>
+  ) {
     const channel = this.#channel(event)
-    items.forEach((webContents) => {
+    for (const webContents of items) {
       debug(`IpcController.send: ${this.name}:${event}: send (channel: ${channel}) (webContents: ${webContents.id})`)
       debug('args:', args)
       try {
@@ -116,14 +133,19 @@ export class IpcBroadcastController<Events extends IpcBroadcastControllerEvents 
       } catch (err) {
         console.error('IpcBroadcastController.#send: An error occurred in the webContents.send:', err)
       }
-    })
+    }
   }
 
   /**
    * Can only be called in the renderer process.
    */
-  off<K extends IpcBroadcastControllerKey<Events>> (event: K, listener?: IpcBroadcastControllerListenerWithEvent<Events[K]>) {
-    const handlers = (listener ? (this.#eventsListeners.get(event) ?? []) : []).filter((item) => item.listener !== listener)
+  off<K extends IpcBroadcastControllerKey<Events>>(
+    event: K,
+    listener?: IpcBroadcastControllerListenerWithEvent<Events[K]>,
+  ) {
+    const handlers = (listener ? (this.#eventsListeners.get(event) ?? []) : []).filter(
+      (item) => item.listener !== listener,
+    )
     if (handlers.length === 0) {
       const listener = this.#ipcRendererEventListeners.get(event)
       if (listener) {
@@ -138,21 +160,27 @@ export class IpcBroadcastController<Events extends IpcBroadcastControllerEvents 
   /**
    * Can only be called in the renderer process.
    */
-  on<K extends IpcBroadcastControllerKey<Events>> (event: K, listener: IpcBroadcastControllerListenerWithEvent<Events[K]>) {
+  on<K extends IpcBroadcastControllerKey<Events>>(
+    event: K,
+    listener: IpcBroadcastControllerListenerWithEvent<Events[K]>,
+  ) {
     this.#addEventListener(event, listener)
   }
 
   /**
    * Can only be called in the renderer process.
    */
-  once<K extends IpcBroadcastControllerKey<Events>> (event: K, listener: IpcBroadcastControllerListenerWithEvent<Events[K]>) {
+  once<K extends IpcBroadcastControllerKey<Events>>(
+    event: K,
+    listener: IpcBroadcastControllerListenerWithEvent<Events[K]>,
+  ) {
     this.#addEventListener(event, listener, true)
   }
 
   /**
    * Can only be called in the main process.
    */
-   send<K extends IpcBroadcastControllerKey<Events>> (event: K, ...args: Parameters<Events[K]>) {
+  send<K extends IpcBroadcastControllerKey<Events>>(event: K, ...args: Parameters<Events[K]>) {
     try {
       const getter = (this.webContentsGetter ?? IpcBroadcastController.WebContentsGetter ?? (() => []))()
       if (isPromise(getter)) {
@@ -172,10 +200,11 @@ export class IpcBroadcastController<Events extends IpcBroadcastControllerEvents 
   }
 }
 
-export function preloadInit (ipcRenderer: Electron.IpcRenderer) {
+export function preloadInit(ipcRenderer: Electron.IpcRenderer) {
+  // noinspection JSUnusedGlobalSymbols
   const obj = {
     name: 'GlobalIpcBroadcastController',
-    off (controllerName: string, name: string, listener: IpcBroadcastControllerListenerWithEvent) {
+    off(controllerName: string, name: string, listener: IpcBroadcastControllerListenerWithEvent) {
       const channel = channelGenerator(controllerName, name)
       const funcName = `${this.name}.off`
 
@@ -183,7 +212,7 @@ export function preloadInit (ipcRenderer: Electron.IpcRenderer) {
 
       ipcRenderer.off(channel, listener)
     },
-    on (controllerName: string, name: string, listener: IpcBroadcastControllerListenerWithEvent) {
+    on(controllerName: string, name: string, listener: IpcBroadcastControllerListenerWithEvent) {
       const channel = channelGenerator(controllerName, name)
       const funcName = `${this.name}.on`
 

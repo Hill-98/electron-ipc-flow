@@ -1,5 +1,5 @@
 import isPromise from 'is-promise'
-import { debug, ErrorHandler, isNull } from './common.ts'
+import { ErrorHandler, debug, isNull } from './common.ts'
 
 declare global {
   namespace globalThis {
@@ -9,16 +9,16 @@ declare global {
     interface GlobalIpcController {
       invoke(controllerName: string, name: string, ...args: any): Promise<InvokeHandlerReturnValue>
 
-      register: (name: string) => void | undefined
+      register?: (name: string) => void
 
-      send (controllerName: string, name: string, ...args: any): void
+      send(controllerName: string, name: string, ...args: any): void
     }
   }
 }
 
 export enum Status {
   error,
-  result
+  result,
 }
 
 export interface InvokeHandlerReturnValue<T = any> {
@@ -27,32 +27,55 @@ export interface InvokeHandlerReturnValue<T = any> {
 }
 
 export type IpcControllerHandler = (...args: any[]) => any
+
 export type IpcControllerEvents = Record<string, IpcControllerHandler>
+
 export type IpcControllerFunctions = Record<string, IpcControllerHandler>
-export type IpcControllerInvokeHandler<T extends IpcControllerHandler = IpcControllerHandler> = (event: Electron.IpcMainInvokeEvent, ...args: Parameters<T>) => ReturnType<T>
-export type IpcControllerEventHandler<T extends IpcControllerHandler = IpcControllerHandler> = (event: Electron.IpcMainEvent, ...args: Parameters<T>) => ReturnType<T>
-export type IpcControllerKey<T extends IpcControllerFunctions | IpcControllerEvents> = Extract<keyof T, string>;
+
+export type IpcControllerInvokeHandler<T extends IpcControllerHandler = IpcControllerHandler> = (
+  event: Electron.IpcMainInvokeEvent,
+  ...args: Parameters<T>
+) => ReturnType<T>
+
+export type IpcControllerEventHandler<T extends IpcControllerHandler = IpcControllerHandler> = (
+  event: Electron.IpcMainEvent,
+  ...args: Parameters<T>
+) => ReturnType<T>
+
+export type IpcControllerKey<T extends IpcControllerFunctions | IpcControllerEvents> = Extract<keyof T, string>
+
 export type IpcControllerCallers<T extends IpcControllerFunctions> = {
   readonly [P in keyof T]: (...args: Parameters<T[P]>) => Promise<Awaited<ReturnType<T[P]>>>
 }
 
-export type TrustHandlerFunc = (controller: IpcController, name: string, type: 'event' | 'invoke', event: Electron.IpcMainInvokeEvent) => Promise<boolean> | boolean
+export type TrustHandlerFunc = (
+  controller: IpcController,
+  name: string,
+  type: 'event' | 'invoke',
+  event: Electron.IpcMainInvokeEvent,
+) => Promise<boolean> | boolean
 
 const EventChannelSuffix = ':event'
 const InvokeChannelSuffix = ':invoke'
 const IpcControllerRegistered = new Set<string>()
 
 const channelGenerator = (controller: string, name: string) => `IpcController:${controller}:${name}`
-const ipcMainIsNull: (value: any) => asserts value is Electron.IpcMain = isNull.bind(this, 'IpcController: ipcMain is null.')
+const ipcMainIsNull: (value: any) => asserts value is Electron.IpcMain = isNull.bind(
+  this,
+  'IpcController: ipcMain is null.',
+)
 
-function getGlobalIpcController (): GlobalIpcController {
+function getGlobalIpcController(): GlobalIpcController {
   const global = typeof window !== 'undefined' ? window : globalThis
-  isNull('IpcController: Can\'t find the "globalThis.$IpcController", Forgot to use "preloadInit" in the preload script?', global.$IpcController)
+  isNull(
+    'IpcController: Can\'t find the "globalThis.$IpcController", Forgot to use "preloadInit" in the preload script?',
+    global.$IpcController,
+  )
   return global.$IpcController
 }
 
 const callersHandler: ProxyHandler<IpcController> = {
-  get (target, p) {
+  get(target, p) {
     if (typeof p === 'string') {
       return target.invoke.bind(target, p)
     }
@@ -61,7 +84,7 @@ const callersHandler: ProxyHandler<IpcController> = {
 }
 
 const handlersHandler: ProxyHandler<IpcController> = {
-  set (target, p, newValue) {
+  set(target, p, newValue) {
     if (typeof p === 'string') {
       target.handle(p, newValue)
       return true
@@ -70,6 +93,7 @@ const handlersHandler: ProxyHandler<IpcController> = {
   },
 }
 
+// noinspection JSUnusedGlobalSymbols
 /**
  * This controller can call functions defined in the main process from the renderer process or
  * send messages to the main process, and it has an optional trust handler.
@@ -113,9 +137,9 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
 
   #ipcMainEventListeners = new Map<string, IpcControllerEventHandler>()
 
-  #eventsListeners = new Map<string, { listener: IpcControllerEventHandler, once: boolean }[]>()
+  #eventsListeners = new Map<string, { listener: IpcControllerEventHandler; once: boolean }[]>()
 
-  constructor (name: string) {
+  constructor(name: string) {
     if (name.trim() === '') {
       throw new SyntaxError('IpcController: "name" cannot be an empty string.')
     }
@@ -128,7 +152,7 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
     }
   }
 
-  #addEventListener (event: IpcControllerKey<Events>, listener: IpcControllerHandler, once = false) {
+  #addEventListener(event: IpcControllerKey<Events>, listener: IpcControllerHandler, once = false) {
     ipcMainIsNull(IpcController.ipcMain)
 
     if (!this.#ipcMainEventListeners.has(event)) {
@@ -148,18 +172,23 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
     this.#eventsListeners.set(event, listeners)
   }
 
-  #eventChannel (name: string) {
+  #eventChannel(name: string) {
     return channelGenerator(this.name, name).concat(EventChannelSuffix)
   }
 
-  #invokeChannel (name: string) {
+  #invokeChannel(name: string) {
     return channelGenerator(this.name, name).concat(InvokeChannelSuffix)
   }
 
-  async #ipcMainEventListener (channel: string, name: IpcControllerKey<Events>, event: Electron.IpcMainEvent, ...args: any) {
+  async #ipcMainEventListener(
+    channel: string,
+    name: IpcControllerKey<Events>,
+    event: Electron.IpcMainEvent,
+    ...args: any
+  ) {
     try {
       const trust = (this.trustHandler ?? IpcController.TrustHandler)(this, name, 'event', event)
-      if (trust === false || !await trust) {
+      if (trust === false || !(await trust)) {
         debug(`IpcController.#ipcMainEventListener: ${this.name}:${name}: blocked (channel: ${channel})`)
         return
       }
@@ -181,18 +210,25 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
       }
       return item.once
     })
-    onceListeners.forEach((item) => {
+    for (const item of onceListeners) {
       this.off(name, item.listener)
-    })
+    }
   }
 
-  async #handle (channel: string, name: string, passEvent: boolean, func: IpcControllerHandler, event: Electron.IpcMainInvokeEvent, ...args: any): Promise<InvokeHandlerReturnValue> {
+  async #handle(
+    channel: string,
+    name: string,
+    passEvent: boolean,
+    func: IpcControllerHandler,
+    event: Electron.IpcMainInvokeEvent,
+    ...args: any
+  ): Promise<InvokeHandlerReturnValue> {
     debug(`IpcController.#handle: ${this.name}:${name}: received (channel: ${channel})`)
     debug('args:', args)
 
     try {
       const trust = (this.trustHandler ?? IpcController.TrustHandler)(this, name, 'invoke', event)
-      if (trust === false || !await trust) {
+      if (trust === false || !(await trust)) {
         debug(`IpcController.#handle: ${this.name}:${name}: blocked (channel: ${channel})`)
         return {
           status: Status.error,
@@ -228,7 +264,7 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
     }
   }
 
-  #tryPromise (result: any): Promise<any> | any {
+  #tryPromise(result: any): Promise<any> | any {
     if (isPromise(result)) {
       return result.then(this.#tryPromise.bind(this))
     }
@@ -238,7 +274,7 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
   /**
    * Can only be called in the main process.
    */
-  handle<K extends IpcControllerKey<Functions>> (name: K, handler: Functions[K]) {
+  handle<K extends IpcControllerKey<Functions>>(name: K, handler: Functions[K]) {
     ipcMainIsNull(IpcController.ipcMain)
     const channel = this.#invokeChannel(name)
     IpcController.ipcMain.handle(channel, this.#handle.bind(this, channel, name, false, handler))
@@ -249,7 +285,7 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
    *
    * Like `handle()`, it will just pass the event object.
    */
-  handleWithEvent<K extends IpcControllerKey<Functions>> (name: K, handler: IpcControllerInvokeHandler<Functions[K]>) {
+  handleWithEvent<K extends IpcControllerKey<Functions>>(name: K, handler: IpcControllerInvokeHandler<Functions[K]>) {
     ipcMainIsNull(IpcController.ipcMain)
     const channel = this.#invokeChannel(name)
     IpcController.ipcMain.handle(channel, this.#handle.bind(this, channel, name, true, handler))
@@ -258,7 +294,10 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
   /**
    * Can only be called in the renderer process.
    */
-  async invoke<K extends IpcControllerKey<Functions>> (name: K, ...args: Parameters<Functions[K]>): Promise<Awaited<ReturnType<Functions[K]>>> {
+  async invoke<K extends IpcControllerKey<Functions>>(
+    name: K,
+    ...args: Parameters<Functions[K]>
+  ): Promise<Awaited<ReturnType<Functions[K]>>> {
     const result = await getGlobalIpcController().invoke(this.name, name, ...args)
 
     debug(`IpcController.invoke: ${this.name}:${name}: received result (channel: ${this.#invokeChannel(name)})`)
@@ -275,10 +314,12 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
   /**
    * Can only be called in the main process.
    */
-  off<K extends IpcControllerKey<Events>> (event: K, listener?: IpcControllerEventHandler<Functions[K]>) {
+  off<K extends IpcControllerKey<Events>>(event: K, listener?: IpcControllerEventHandler<Functions[K]>) {
     ipcMainIsNull(IpcController.ipcMain)
 
-    const handlers = (listener ? (this.#eventsListeners.get(event) ?? []) : []).filter((item) => item.listener !== listener)
+    const handlers = (listener ? (this.#eventsListeners.get(event) ?? []) : []).filter(
+      (item) => item.listener !== listener,
+    )
     if (handlers.length === 0) {
       const listener = this.#ipcMainEventListeners.get(event)
       if (listener) {
@@ -293,43 +334,44 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
   /**
    * Can only be called in the main process.
    */
-  on<K extends IpcControllerKey<Events>> (event: K, listener: IpcControllerEventHandler<Events[K]>) {
+  on<K extends IpcControllerKey<Events>>(event: K, listener: IpcControllerEventHandler<Events[K]>) {
     this.#addEventListener(event, listener)
   }
 
   /**
    * Can only be called in the main process.
    */
-  once<K extends IpcControllerKey<Events>> (event: K, listener: IpcControllerEventHandler<Events[K]>) {
+  once<K extends IpcControllerKey<Events>>(event: K, listener: IpcControllerEventHandler<Events[K]>) {
     this.#addEventListener(event, listener, true)
   }
 
   /**
    * Can only be called in the renderer process.
    */
-  send<K extends IpcControllerKey<Events>> (event: K, ...args: Parameters<Events[K]>) {
+  send<K extends IpcControllerKey<Events>>(event: K, ...args: Parameters<Events[K]>) {
     getGlobalIpcController().send(this.name, event, ...args)
   }
 
   /**
    * Can only be called in the preload script.
    */
-  register () {
+  register() {
     IpcControllerRegistered.add(this.name)
   }
 
   /**
    * Can only be called in the preload script.
    */
-  unregister () {
+  unregister() {
     IpcControllerRegistered.delete(this.name)
   }
 }
 
-export function preloadInit (ipcRenderer: Electron.IpcRenderer, autoRegister: boolean) {
+export function preloadInit(ipcRenderer: Electron.IpcRenderer, autoRegister: boolean) {
+  // noinspection JSUnusedGlobalSymbols
   const obj = {
     name: 'GlobalIpcController',
-    invoke (controllerName: string, name: string, ...args: any[]) {
+    invoke(controllerName: string, name: string, ...args: any[]) {
       const channel = channelGenerator(controllerName, name).concat(InvokeChannelSuffix)
       const funcName = `${this.name}.invoke`
 
@@ -342,13 +384,13 @@ export function preloadInit (ipcRenderer: Electron.IpcRenderer, autoRegister: bo
 
       return ipcRenderer.invoke(channel, ...args)
     },
-    register (name: string) {
+    register(name: string) {
       if (name.trim() !== '' && !IpcControllerRegistered.has(name)) {
         debug(`${this.name}.register: ${name}`)
         IpcControllerRegistered.add(name)
       }
     },
-    send (controllerName: string, name: string, ...args: any[]) {
+    send(controllerName: string, name: string, ...args: any[]) {
       const channel = channelGenerator(controllerName, name).concat(EventChannelSuffix)
       const funcName = `${this.name}.send`
 

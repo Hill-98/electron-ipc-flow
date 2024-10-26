@@ -1,4 +1,4 @@
-import { controller, calls } from './controller.js'
+import { calls, controller } from './controller.js'
 
 document.body.textContent += await calls.hey('electron-ipc-flow')
 document.body.textContent += '|'

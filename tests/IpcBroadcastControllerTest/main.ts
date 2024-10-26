@@ -36,7 +36,7 @@ async function runTest() {
   wins.push(await createBrowserWindow())
   controller.send('say', 'electron-ipc-flow-2')
   await sleep(1)
-  controller.webContentsGetter = () => Promise.resolve([wins[1].webContents])
+  controller.webContentsGetter = () => [wins[1].webContents]
   controller.send('say', 'electron-ipc-flow-3')
   await sleep(1)
   controller.webContentsGetter = undefined

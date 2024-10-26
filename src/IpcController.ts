@@ -1,3 +1,4 @@
+import isPromise from 'is-promise'
 import { debug, ErrorHandler, isNull } from './common.ts'
 
 declare global {
@@ -35,7 +36,7 @@ export type IpcControllerCallers<T extends IpcControllerFunctions> = {
   readonly [P in keyof T]: (...args: Parameters<T[P]>) => Promise<Awaited<ReturnType<T[P]>>>
 }
 
-export type TrustHandlerFunc = (controller: IpcController, name: string, type: 'event' | 'invoke', event: Electron.IpcMainInvokeEvent) => Promise<boolean>
+export type TrustHandlerFunc = (controller: IpcController, name: string, type: 'event' | 'invoke', event: Electron.IpcMainInvokeEvent) => Promise<boolean> | boolean
 
 const EventChannelSuffix = ':event'
 const InvokeChannelSuffix = ':invoke'
@@ -89,7 +90,7 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
    *
    * @see {trustHandler}
    */
-  static TrustHandler: TrustHandlerFunc = () => Promise.resolve(true)
+  static TrustHandler: TrustHandlerFunc = () => true
 
   readonly name: string = ''
 
@@ -157,8 +158,8 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
 
   async #ipcMainEventListener (channel: string, name: IpcControllerKey<Events>, event: Electron.IpcMainEvent, ...args: any) {
     try {
-      const trustHandler = this.trustHandler ?? IpcController.TrustHandler
-      if (!await trustHandler(this, name, 'event', event)) {
+      const trust = (this.trustHandler ?? IpcController.TrustHandler)(this, name, 'event', event)
+      if (trust === false || !await trust) {
         debug(`IpcController.#ipcMainEventListener: ${this.name}:${name}: blocked (channel: ${channel})`)
         return
       }
@@ -190,8 +191,8 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
     debug('args:', args)
 
     try {
-      const trustHandler = this.trustHandler ?? IpcController.TrustHandler
-      if (!await trustHandler(this, name, 'invoke', event)) {
+      const trust = (this.trustHandler ?? IpcController.TrustHandler)(this, name, 'invoke', event)
+      if (trust === false || !await trust) {
         debug(`IpcController.#handle: ${this.name}:${name}: blocked (channel: ${channel})`)
         return {
           status: Status.error,
@@ -207,7 +208,10 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
     }
 
     try {
-      const value = await this.#tryPromise(passEvent ? func(event, ...args) : func(...args))
+      let value = this.#tryPromise(passEvent ? func(event, ...args) : func(...args))
+      if (isPromise(value)) {
+        value = await value
+      }
       debug(`IpcController.#handle: ${this.name}:${name}: send result (channel: ${channel})`)
       debug('value:', value)
       return {
@@ -224,11 +228,11 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
     }
   }
 
-  #tryPromise (result: any): Promise<any> {
-    if (result instanceof Promise) {
+  #tryPromise (result: any): Promise<any> | any {
+    if (isPromise(result)) {
       return result.then(this.#tryPromise.bind(this))
     }
-    return Promise.resolve(result)
+    return result
   }
 
   /**

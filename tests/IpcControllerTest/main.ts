@@ -63,7 +63,7 @@ controller.once('hi', (_, who) => {
   CONTROLLER_EVENT_RESULTS.push(`hi ${who} once`)
 })
 
-handlers.hey = (who) => Promise.resolve(`hey ${who}`)
+handlers.hey = (who) => Promise.resolve(Promise.resolve(Promise.resolve(`hey ${who}`)))
 
 handlers.say = (who) => `say ${who}`
 

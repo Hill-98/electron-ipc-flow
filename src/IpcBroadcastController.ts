@@ -1,3 +1,4 @@
+import isPromise from 'is-promise'
 import { debug, isNull } from './common.ts'
 
 declare global {
@@ -18,7 +19,7 @@ export type IpcBroadcastControllerEvents = Record<string, IpcBroadcastController
 export type IpcBroadcastControllerListenerWithEvent<T extends IpcBroadcastControllerListener = IpcBroadcastControllerListener> = (event: Electron.IpcRendererEvent, ...args: Parameters<T>) => ReturnType<T>
 export type IpcBroadcastControllerKey<T extends IpcBroadcastControllerEvents> = Extract<keyof T, string>;
 
-export type WebContentsGetter = () => Promise<Electron.WebContents[]>
+export type WebContentsGetter = () => Promise<Electron.WebContents[]> | Electron.WebContents[]
 
 const channelGenerator = (controller: string, name: string) => `IpcBroadcastController:${controller}:${name}`
 
@@ -32,7 +33,7 @@ function getGlobalIpcBroadcastController (): GlobalIpcBroadcastController {
  * This controller can send messages from the main process to renderer processes.
  *
  * IpcBroadcastController has a static property WebContentsGetter, and each
- * controller instance also has a webContentsGetter property. They are function that return Promise<Electron.WebContents[]>.
+ * controller instance also has a webContentsGetter property. They are function that return `Electron.WebContents[]`.
  *
  * They are called before sending messages each time to get the renderers to which message can be sent.
  */
@@ -105,6 +106,19 @@ export class IpcBroadcastController<Events extends IpcBroadcastControllerEvents 
     })
   }
 
+  #send<K extends IpcBroadcastControllerKey<Events>> (items: Electron.WebContents[], event: K, ...args: Parameters<Events[K]>) {
+    const channel = this.#channel(event)
+    items.forEach((webContents) => {
+      debug(`IpcController.send: ${this.name}:${event}: send (channel: ${channel}) (webContents: ${webContents.id})`)
+      debug('args:', args)
+      try {
+        webContents.send(channel, ...args)
+      } catch (err) {
+        console.error('IpcBroadcastController.#send: An error occurred in the webContents.send:', err)
+      }
+    })
+  }
+
   /**
    * Can only be called in the renderer process.
    */
@@ -138,21 +152,23 @@ export class IpcBroadcastController<Events extends IpcBroadcastControllerEvents 
   /**
    * Can only be called in the main process.
    */
-  send<K extends IpcBroadcastControllerKey<Events>> (event: K, ...args: Parameters<Events[K]>) {
-    const getter = this.webContentsGetter ?? IpcBroadcastController.WebContentsGetter ?? (() => Promise.resolve([]))
-    getter()
-      .then((items) => {
-        const channel = this.#channel(event)
-        items.forEach((webContents) => {
-          debug(`IpcController.send: ${this.name}:${event}: send (channel: ${channel}) (webContents: ${webContents.id})`)
-          debug('args:', args)
-
-          webContents.send(channel, ...args)
-        })
-      })
-      .catch((err) => {
-        console.error('IpcBroadcastController.send: An error occurred in the webContents getter:', err)
-      })
+   send<K extends IpcBroadcastControllerKey<Events>> (event: K, ...args: Parameters<Events[K]>) {
+    try {
+      const getter = (this.webContentsGetter ?? IpcBroadcastController.WebContentsGetter ?? (() => []))()
+      if (isPromise(getter)) {
+        getter
+          .then((items) => {
+            this.#send(items, event, ...args)
+          })
+          .catch((err) => {
+            console.error('IpcBroadcastController.send: An error occurred in the webContents getter:', err)
+          })
+      } else {
+        this.#send(getter, event, ...args)
+      }
+    } catch (err) {
+      console.error('IpcBroadcastController.send: An error occurred in the webContents getter:', err)
+    }
   }
 }
 

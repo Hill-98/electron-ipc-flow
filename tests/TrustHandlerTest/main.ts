@@ -37,7 +37,7 @@ async function runTest() {
   const body1 = await getWebContentsBody(win.webContents)
   assert(includeCount(body1, 'Blocked by trust handler') === 2, 'test default trust handler')
 
-  controller.trustHandler = (_, name) => Promise.resolve(name === 'hey' || name === 'hi')
+  controller.trustHandler = (_, name) => name === 'hey' || name === 'hi'
 
   win.reload()
   await sleep(1000)

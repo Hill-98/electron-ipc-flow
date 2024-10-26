@@ -172,7 +172,7 @@ export class IpcBroadcastController<Events extends IpcBroadcastControllerEvents 
   }
 }
 
-export function preloadInit (contextBridge: Electron.ContextBridge, ipcRenderer: Electron.IpcRenderer) {
+export function preloadInit (ipcRenderer: Electron.IpcRenderer) {
   const obj = {
     name: 'GlobalIpcBroadcastController',
     off (controllerName: string, name: string, listener: IpcBroadcastControllerListenerWithEvent) {
@@ -192,5 +192,9 @@ export function preloadInit (contextBridge: Electron.ContextBridge, ipcRenderer:
       ipcRenderer.on(channel, listener)
     },
   }
-  contextBridge.exposeInMainWorld('$IpcBroadcastController', obj satisfies GlobalIpcBroadcastController)
+
+  return {
+    api: obj satisfies GlobalIpcBroadcastController,
+    key: '$IpcBroadcastController',
+  }
 }

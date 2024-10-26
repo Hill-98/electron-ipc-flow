@@ -12,9 +12,18 @@ interface InitOptions {
    */
   autoRegisterIpcController?: boolean
   /**
+   * If the value is greater than 0, use `contextBridge.exposeInIsolatedWorld` to expose the global object in isolated world.
+   */
+  isolatedWorldId?: number
+  /**
    * Global object required to initialize `IpcBroadcastController`, default is `false`.
    */
   initBroadcastController?: boolean
+}
+
+export interface PreloadInitResult {
+  api: any
+  key: string
 }
 
 /**
@@ -23,14 +32,27 @@ interface InitOptions {
 export function preloadInit (contextBridge: Electron.ContextBridge, ipcRenderer: Electron.IpcRenderer, options?: InitOptions) {
   const opt: Required<InitOptions> = {
     autoRegisterIpcController: true,
+    isolatedWorldId: 0,
     initBroadcastController: false,
     ...(options ?? {}),
   }
-  initIpcController(contextBridge, ipcRenderer, opt.autoRegisterIpcController)
+  const items: PreloadInitResult[] = [
+    {
+      api: isDebug() ? 'true' : 'false',
+      key: 'ELECTRON_IPC_FLOW_DEBUG',
+    },
+    initIpcController(ipcRenderer, opt.autoRegisterIpcController),
+  ]
   if (opt.initBroadcastController) {
-    initIpcBroadcastController(contextBridge, ipcRenderer)
+    items.push(initIpcBroadcastController(ipcRenderer))
   }
-  contextBridge.exposeInMainWorld('ELECTRON_IPC_FLOW_DEBUG', isDebug() ? 'true' : 'false')
+  items.forEach((item) => {
+    if (opt.isolatedWorldId > 0) {
+      contextBridge.exposeInIsolatedWorld(opt.isolatedWorldId, item.key, item.api)
+    } else {
+      contextBridge.exposeInMainWorld(item.key, item.api)
+    }
+  })
 }
 
 export { IpcController } from './IpcController.ts'

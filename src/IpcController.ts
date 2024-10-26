@@ -326,7 +326,7 @@ export class IpcController<Functions extends IpcControllerFunctions = any, Event
   }
 }
 
-export function preloadInit (contextBridge: Electron.ContextBridge, ipcRenderer: Electron.IpcRenderer, autoRegister: boolean) {
+export function preloadInit (ipcRenderer: Electron.IpcRenderer, autoRegister: boolean) {
   const obj = {
     name: 'GlobalIpcController',
     invoke (controllerName: string, name: string, ...args: any[]) {
@@ -366,5 +366,9 @@ export function preloadInit (contextBridge: Electron.ContextBridge, ipcRenderer:
   if (!autoRegister) {
     Reflect.deleteProperty(obj, 'register')
   }
-  contextBridge.exposeInMainWorld('$IpcController', obj satisfies GlobalIpcController)
+
+  return {
+    api: obj satisfies GlobalIpcController,
+    key: '$IpcController',
+  }
 }

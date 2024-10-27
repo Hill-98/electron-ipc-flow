@@ -1,29 +1,19 @@
-import { preloadInit as initIpcBroadcastController } from './IpcBroadcastController.ts'
-import { preloadInit as initIpcController } from './IpcController.ts'
+import { preloadInit as InitIpcClientController } from './IpcClientController.js'
 import { isDebug } from './common.ts'
 
-interface InitOptions {
+export interface InitOptions {
   /**
-   * Auto register `IpcController`, default is `true`.
+   * Auto register `IpcClientController`, default is `true`.
    *
-   * If you do not use it, you need to manually call `IpcController.register` in the preload script.
+   * If you do not use it, you need to manually call {@link IpcClientController.register} in the preload script.
    *
    * If you want to strictly control which IPC each renderer can use, you can disable auto register.
    */
-  autoRegisterIpcController?: boolean
+  autoRegister?: boolean
   /**
    * If the value is greater than 0, use `contextBridge.exposeInIsolatedWorld` to expose the global object in isolated world.
    */
   isolatedWorldId?: number
-  /**
-   * Global object required to initialize `IpcBroadcastController`, default is `false`.
-   */
-  initBroadcastController?: boolean
-}
-
-export interface PreloadInitResult {
-  api: any
-  key: string
 }
 
 /**
@@ -35,21 +25,17 @@ export function preloadInit(
   options?: InitOptions,
 ) {
   const opt: Required<InitOptions> = {
-    autoRegisterIpcController: true,
+    autoRegister: true,
     isolatedWorldId: 0,
-    initBroadcastController: false,
     ...(options ?? {}),
   }
-  const items: PreloadInitResult[] = [
+  const items = [
     {
       api: isDebug() ? 'true' : 'false',
       key: 'ELECTRON_IPC_FLOW_DEBUG',
     },
-    initIpcController(ipcRenderer, opt.autoRegisterIpcController),
+    InitIpcClientController(ipcRenderer, opt.autoRegister),
   ]
-  if (opt.initBroadcastController) {
-    items.push(initIpcBroadcastController(ipcRenderer))
-  }
   for (const item of items) {
     if (opt.isolatedWorldId > 0) {
       contextBridge.exposeInIsolatedWorld(opt.isolatedWorldId, item.key, item.api)
@@ -59,6 +45,6 @@ export function preloadInit(
   }
 }
 
-export { IpcController } from './IpcController.ts'
-export { IpcBroadcastController } from './IpcBroadcastController.ts'
+export { IpcClientController } from './IpcClientController.js'
+export { IpcServerController } from './IpcServerController.js'
 export { ErrorHandler } from './common.ts'

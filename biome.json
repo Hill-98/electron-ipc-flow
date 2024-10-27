@@ -22,8 +22,17 @@
     "enabled": true,
     "rules": {
       "recommended": true,
+      "correctness": {
+        "noUnusedFunctionParameters": "error",
+        "noUnusedImports": "error",
+        "noUnusedLabels": "error",
+        "noUnusedPrivateClassMembers": "error",
+        "noUnusedVariables": "error"
+      },
       "style": {
-        "useEnumInitializers": "off"
+        "useEnumInitializers": "off",
+        "useNodeAssertStrict": "error",
+        "useNodejsImportProtocol": "error"
       },
       "suspicious": {
         "noExplicitAny": "off"

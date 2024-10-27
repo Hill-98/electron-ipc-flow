@@ -23,45 +23,36 @@ async function createBrowserWindow() {
 async function runTest() {
   const win = await createBrowserWindow()
   await sleep(1000)
-  const body1 = await getWebContentsBody(win.webContents)
-  assert.strictEqual(includeCount(body1, 'Blocked by trust handler'), 2, 'test default trust handler')
+  const body = await getWebContentsBody(win.webContents)
 
-  server.trustHandler = (_, name) => name === 'hey' || name === 'hi'
-
-  win.reload()
-  await sleep(1000)
-
-  const body2 = await getWebContentsBody(win.webContents)
-  assert.strictEqual(includeCount(body2, 'hey electron-ipc-flow'), 1, 'test controller trust handler call pass')
-  assert.strictEqual(
-    includeCount(CONTROLLER_EVENT_RESULTS, 'hi electron-ipc-flow'),
-    1,
-    'test controller trust handler event pass',
-  )
-  assert.strictEqual(includeCount(body2, 'Blocked by trust handler'), 1, 'test controller trust handler call block')
-  assert.strictEqual(
-    includeCount(CONTROLLER_EVENT_RESULTS, 'hello electron-ipc-flow'),
-    0,
-    'test controller trust handler event block',
-  )
-
+  assert.strictEqual(includeCount(body, 'hey electron-ipc-flow'), 1, 'test hey call')
+  assert.strictEqual(includeCount(body, 'say electron-ipc-flow'), 1, 'test say call')
+  assert.strictEqual(includeCount(CONTROLLER_EVENT_RESULTS, 'hi electron-ipc-flow'), 3, 'test send event')
+  assert.strictEqual(includeCount(CONTROLLER_EVENT_RESULTS, 'hi electron-ipc-flow once'), 1, 'test send once event')
+  assert.strictEqual(includeCount(CONTROLLER_EVENT_RESULTS, 'hi electron-ipc-flow off'), 1, 'test send and off event')
   win.close()
 }
 
 process.env.ELECTRON_IPC_FLOW_DEBUG = 'true'
 
 IpcServerController.IpcMain = ipcMain
-IpcServerController.TrustHandler = () => Promise.resolve(false)
 
-server.on('hi', (_, who) => {
+server.serverEvents.hi = (_, who) => {
   CONTROLLER_EVENT_RESULTS.push(`hi ${who}`)
+}
+
+const hi = (_: Electron.IpcMainEvent, who: string) => {
+  CONTROLLER_EVENT_RESULTS.push(`hi ${who} off`)
+  server.off('hi', hi)
+}
+
+server.on('hi', hi)
+
+server.once('hi', (_, who) => {
+  CONTROLLER_EVENT_RESULTS.push(`hi ${who} once`)
 })
 
-server.on('hello', (_, who) => {
-  CONTROLLER_EVENT_RESULTS.push(`hello ${who}`)
-})
-
-server.handle('hey', (who) => Promise.resolve(`hey ${who}`))
+server.functions.hey = (who) => Promise.resolve(Promise.resolve(Promise.resolve(`hey ${who}`)))
 
 server.handle('say', (who) => `say ${who}`)
 

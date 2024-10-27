@@ -1,8 +1,9 @@
-import assert from 'node:assert'
+import assert from 'node:assert/strict'
 import path from 'node:path'
 import { BrowserWindow, app, ipcMain } from 'electron'
-import { IpcBroadcastController, IpcController } from '../../src/index.js'
-import { broadcast, controller } from './controller.js'
+import { IpcServerController } from '../../src/index.js'
+import { sleep } from '../common.js'
+import { server } from './controller.js'
 
 async function createBrowserWindow() {
   const win = new BrowserWindow({
@@ -20,33 +21,32 @@ async function createBrowserWindow() {
 
 async function getFrame() {
   return new Promise<Electron.WebFrameMain>((resolve) => {
-    controller.once('say', (e) => {
+    server.once('say', (e) => {
       resolve(e.senderFrame)
     })
   })
 }
 
 function getWebFrameBody(webFrame: Electron.WebFrameMain) {
-  return webFrame.executeJavaScript('document.body.textContent.trim().split("|")') as Promise<string[]>
-}
-
-function includeCount(strs: string[], need: string): number {
-  return strs.filter((str) => str === need).length
+  return webFrame.executeJavaScript(
+    'document.body.textContent.trim().split("|").filter((v) => v.trim() !== "")',
+  ) as Promise<string[]>
 }
 
 async function runTest() {
   const win = await createBrowserWindow()
   const frame = await getFrame()
-  broadcast.sendToFrame(frame.routingId, 'say', 'electron-ipc-flow')
+  server.sendToFrame(frame.routingId, 'say', 'electron-ipc-flow')
+  await sleep(1000)
   const body = await getWebFrameBody(frame)
-  assert(includeCount(body, 'hello electron-ipc-flow.') === 1, 'test on sendToFrame')
+  assert.strictEqual(JSON.stringify(body), JSON.stringify(['hello electron-ipc-flow.']), 'test on sendToFrame')
   win.close()
 }
 
 process.env.ELECTRON_IPC_FLOW_DEBUG = 'true'
 
-IpcBroadcastController.WebContentsGetter = () => BrowserWindow.getAllWindows().map((win) => win.webContents)
-IpcController.ipcMain = ipcMain
+IpcServerController.IpcMain = ipcMain
+IpcServerController.WebContentsGetter = () => BrowserWindow.getAllWindows().map((win) => win.webContents)
 
 app.on('web-contents-created', (_, webContents) => {
   setImmediate(webContents.openDevTools.bind(webContents, { mode: 'detach' }))

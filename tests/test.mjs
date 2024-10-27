@@ -1,8 +1,9 @@
-import assert from 'node:assert'
 import { spawn } from 'node:child_process'
-import fs from 'node:fs'
+import { existsSync as exists } from 'node:fs'
+import { rm, writeFile } from 'node:fs/promises'
 import module from 'node:module'
 import { basename, join } from 'node:path'
+import { test } from 'node:test'
 import { build } from 'vite'
 
 const __dirname = import.meta.dirname
@@ -18,8 +19,8 @@ async function buildTest(dir) {
   const preload = join(dir, 'preload.ts')
   const output = join(join(__dirname, '../dist', basename(dir)))
 
-  if (fs.existsSync(output)) {
-    fs.rmSync(output, { recursive: true })
+  if (exists(output)) {
+    await rm(output, { recursive: true })
   }
 
   // main
@@ -43,6 +44,7 @@ async function buildTest(dir) {
         ],
       },
       outDir: output,
+      reportCompressedSize: false,
       sourcemap: 'inline',
       target: 'ESNext',
     },
@@ -64,6 +66,7 @@ async function buildTest(dir) {
         external: ['electron', 'electron/renderer'],
       },
       outDir: output,
+      reportCompressedSize: false,
       sourcemap: 'inline',
       target: 'ESNext',
     },
@@ -79,6 +82,7 @@ async function buildTest(dir) {
       minify: false,
       modulePreload: false,
       outDir: output,
+      reportCompressedSize: false,
       sourcemap: 'inline',
       target: 'ESNext',
     },
@@ -92,29 +96,33 @@ async function buildTest(dir) {
  * @returns {Promise<boolean>}
  */
 async function runTest(dir) {
+  const packageJson = {
+    name: 'electron-ipc-flow-test',
+    main: 'main.js',
+  }
+  await writeFile(join(dir, 'package.json'), JSON.stringify(packageJson))
   return new Promise((resolve, reject) => {
-    const electron = spawn(ELECTRON_BIN, [join(dir, 'main.js')], {
+    const electron = spawn(ELECTRON_BIN, [dir], {
       shell: true,
-      stdio: 'inherit',
+      stdio: ['inherit', process.stdout, process.stdout],
     })
     electron.on('error', reject)
     electron.on('exit', (code) => {
-      resolve(code === 0)
+      if (code === 0) {
+        resolve()
+      } else {
+        reject(`electron exit code is ${code}.`)
+      }
     })
   })
 }
 
-assert(await runTest(await buildTest(join(__dirname, 'IpcBroadcastControllerTest'))), 'IpcBroadcastControllerTest')
+test('ClientToServerTest', runTest.bind(this, await buildTest(join(__dirname, 'ClientToServerTest'))))
 
-assert(await runTest(await buildTest(join(__dirname, 'IpcControllerTest'))), 'IpcControllerTest')
+test('BroadcastTest', runTest.bind(this, await buildTest(join(__dirname, 'BroadcastTest'))))
 
-assert(
-  await runTest(await buildTest(join(__dirname, 'IpcBroadcastControllerSendToHostTest'))),
-  'IpcBroadcastControllerSendToHostTest',
-)
+test('ClientRegisterTest', runTest.bind(this, await buildTest(join(__dirname, 'ClientRegisterTest'))))
 
-assert(await runTest(await buildTest(join(__dirname, 'IpcControllerRegisterTest'))), 'IpcControllerRegisterTest')
+test('SendToHostTest', runTest.bind(this, await buildTest(join(__dirname, 'SendToHostTest'))))
 
-assert(await runTest(await buildTest(join(__dirname, 'TrustHandlerTest'))), 'TrustHandlerTest')
-
-console.log('* All tests pass!')
+test('TrustHandlerTest', runTest.bind(this, await buildTest(join(__dirname, 'TrustHandlerTest'))))

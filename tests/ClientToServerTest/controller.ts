@@ -8,8 +8,6 @@ type Functions = {
 
 type Events = {
   hi(who: string): void
-
-  hello(who: string): void
 }
 
 export const client = new IpcClientController<Functions, any, Events>('controller')

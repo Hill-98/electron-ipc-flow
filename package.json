@@ -26,9 +26,13 @@
     "prepublish": "npm run check && npm run test && npm run build",
     "build": "vite build && vite build --mode preload && dts-bundle-generator --no-banner --no-check -o ./dist/index.d.ts ./src/index.ts",
     "check": "biome check && tsc --noEmit",
-    "test": "node tests/test.mjs",
+    "test": "node --test",
     "prepare": "husky"
   },
+  "bundledDependencies": [
+    "is-promise",
+    "serialize-error"
+  ],
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
     "@types/node": "^20.0.0",
@@ -41,7 +45,7 @@
     "vite": "^5.4.10"
   },
   "peerDependencies": {
-    "electron": ">= 12.0.0"
+    "electron": ">= 18.0.0"
   },
   "volta": {
     "node": "20.18.0"

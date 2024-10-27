@@ -25,11 +25,26 @@ export type EventFunction<T, K extends AnyFunction = AnyFunction> = (event: T, .
 
 export type FunctionsObj = Record<string, AnyFunction>
 
+export enum InvokeReturnStatus {
+  error,
+  result,
+}
+
+export interface InvokeReturnObject<T = any> {
+  status: InvokeReturnStatus
+  value: T
+}
+
 export type StringKey<T> = Extract<keyof T, string>
 
+export type channelTypes = 'ClientEvent' | 'Invoke' | 'ServerEvent'
+
+export const channelGenerator = (controller: string, event: string, type: channelTypes) =>
+  `$electron-ipc-flow$||${type}||${controller}||${event}`
+
 /**
- * The error handler used by `IpcController` defaults to using the
- * `serialize-error` package to serialize and deserialize error objects.
+ * The error handler defaults to using the [serialize-error]{@link https://www.npmjs.com/package/serialize-error}
+ * package to serialize and deserialize error objects.
  *
  * The serialize method must be defined in the main process and the
  * deserialize method must be defined in the renderer process.

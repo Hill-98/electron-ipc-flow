@@ -1,6 +1,4 @@
 import { contextBridge, ipcRenderer } from 'electron/renderer'
 import { preloadInit } from '../../src/index.js'
 
-preloadInit(contextBridge, ipcRenderer, {
-  autoRegisterIpcController: true,
-})
+preloadInit(contextBridge, ipcRenderer)

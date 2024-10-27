@@ -1,4 +1,4 @@
-import { broadcast, controller } from './controller.js'
+import { client } from './controller.js'
 
 if (window.parent === window) {
   const iframe = document.createElement('iframe')
@@ -6,9 +6,9 @@ if (window.parent === window) {
   document.body.append(iframe)
 } else {
   setTimeout(() => {
-    controller.send('say', '')
+    client.send('say', '')
   }, 1000)
-  broadcast.on('say', (_, who) => {
+  client.on('say', (_, who) => {
     document.body.textContent += `hello ${who}.`
     document.body.textContent += '|'
   })

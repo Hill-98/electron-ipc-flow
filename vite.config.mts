@@ -18,7 +18,8 @@ export default defineConfig((config) => {
       rollupOptions: {
         external: ['electron', 'electron/renderer'],
       },
-      target: 'ESNext',
+      reportCompressedSize: false,
+      target: ['chrome100', 'node16'], // electron 18
     },
   } satisfies UserConfig
 })

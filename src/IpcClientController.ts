@@ -1,5 +1,5 @@
 import type { AnyFunction, EventFunction, FunctionsObj, InvokeReturnObject, StringKey } from './common.ts'
-import { ErrorHandler, InvokeReturnStatus, channelGenerator, debug, isNull } from './common.ts'
+import { ErrorHandler, InvokeReturnStatus, assertIsNull, channelGenerator, debug } from './common.ts'
 
 declare global {
   namespace globalThis {
@@ -9,13 +9,13 @@ declare global {
     interface GlobalIpcClientController {
       invoke(controllerName: string, name: string, ...args: any): Promise<InvokeReturnObject>
 
-      off(controllerName: string, name: string, listener: RendererEventListener): void
+      off(controllerName: string, event: string, listener: RendererEventListener): void
 
-      on(controllerName: string, name: string, listener: RendererEventListener): void
+      on(controllerName: string, event: string, listener: RendererEventListener): void
 
       register?: (controllerName: string) => void
 
-      send(controllerName: string, name: string, ...args: any): void
+      send(controllerName: string, event: string, ...args: any): void
     }
   }
 }
@@ -83,9 +83,11 @@ export class IpcClientController<
 
   readonly #serverEvents: Readonly<ServerEvents> = new Proxy(this as any, serverEventsProxy)
 
-  #ipcRendererEventListeners = new Map<string, RendererEventListener>()
+  readonly #debug = debug.bind(this)
 
-  #eventsListeners = new Map<string, { listener: RendererEventListener; once: boolean }[]>()
+  readonly #ipcRendererEventListeners = new Map<string, RendererEventListener>()
+
+  readonly #eventsListeners = new Map<string, { listener: RendererEventListener; once: boolean }[]>()
 
   constructor(name: string) {
     if (name.trim() === '') {
@@ -110,7 +112,7 @@ export class IpcClientController<
   /**
    * The proxy object for the `on()` method.
    *
-   * Usage: `IpcClientController.clientEvents.[ClientEvent] = [listener]`
+   * Usage: `IpcClientController.clientEvents.[c] = [listener]`
    */
   get clientEvents() {
     return this.#clientEvents
@@ -128,38 +130,22 @@ export class IpcClientController<
   /**
    * The proxy object for the `send()` method.
    *
-   * Usage: `IpcClientController.serverEvents.[ServerEvent](...args)`
+   * Usage: `IpcClientController.serverEvents.[s](...args)`
    */
   get serverEvents() {
     return this.#serverEvents
   }
 
-  #clientEventChannel(event: string) {
-    return channelGenerator(this.name, event, 'ClientEvent')
-  }
-
-  #invokeChannel(name: string) {
-    return channelGenerator(this.name, name, 'Invoke')
-  }
-
-  #serverEventChannel(event: string) {
-    return channelGenerator(this.name, event, 'ServerEvent')
-  }
-
   #addEventListener(event: StringKey<ClientEvents>, listener: AnyFunction, once = false) {
-    const channel = this.#clientEventChannel(event)
-
     if (!this.#ipcRendererEventListeners.has(event)) {
-      debug(`IpcClientController.#addEventListener: ${this.name}:${event}: add global listener (channel: ${channel})`)
+      this.#debug('add global event listener', null, event, 'c')
 
       const listener = this.#ipcRendererEventListener.bind(this, event)
       IpcClientController.#getGlobalIpcController().on(this.name, event, listener)
       this.#ipcRendererEventListeners.set(event, listener)
     }
 
-    debug(
-      `IpcClientController.#addEventListener: ${this.name}:${event}: add listener (once: ${once}) (channel: ${channel})`,
-    )
+    this.#debug('add event listener', { once }, event, 'c')
 
     const listeners = [
       ...(this.#eventsListeners.get(event) ?? []),
@@ -172,18 +158,14 @@ export class IpcClientController<
   }
 
   #ipcRendererEventListener(event: StringKey<ClientEvents>, eventObj: Electron.IpcRendererEvent, ...args: any) {
-    const channel = this.#clientEventChannel(event)
-
-    debug(`IpcClientController.#ipRendererEventListener: ${this.name}:${event}: received (channel: ${channel}) `)
-    debug('args:', args)
+    this.#debug('received', { args }, event, 'c')
 
     const listeners = this.#eventsListeners.get(event) ?? []
     const onceListeners = listeners.filter((item) => {
       try {
         item.listener(eventObj, ...args)
       } catch (error) {
-        debug(`IpcClientController.#ipRendererEventListener: ${this.name}:${event}: catch error (channel: ${channel}) `)
-        debug('error:', error)
+        this.#debug('catch error', error, event, 'c')
       }
       return item.once
     })
@@ -199,16 +181,11 @@ export class IpcClientController<
     name: K,
     ...args: Parameters<Functions[K]>
   ): Promise<Awaited<ReturnType<Functions[K]>>> {
-    const channel = this.#invokeChannel(name)
-
-    debug(`IpcClientController.invoke: ${this.name}:${name}: invoke (channel: ${channel})`)
-    debug('args:', args)
+    this.#debug('invoke', { args }, name, 'i')
 
     const result = await IpcClientController.#getGlobalIpcController().invoke(this.name, name, ...args)
 
-    debug(`IpcClientController.invoke: ${this.name}:${name}: received result (channel: ${channel})`)
-    debug('status:', result.status)
-    debug('value:', result.value)
+    this.#debug('received', result, name, 'i')
 
     if (result.status === InvokeReturnStatus.error) {
       throw ErrorHandler.deserialize(result.value)
@@ -224,9 +201,7 @@ export class IpcClientController<
    * the corresponding event will be removed.
    */
   off<K extends StringKey<ClientEvents>>(event: K, listener?: RendererEventListener<ClientEvents[K]>) {
-    const channel = this.#clientEventChannel(event)
-
-    debug(`IpcClientController.off: ${this.name}:${event}: off listener (channel: ${channel})`)
+    this.#debug('remove event listener', null, event, 'c')
 
     const handlers = (listener ? (this.#eventsListeners.get(event) ?? []) : []).filter(
       (item) => item.listener !== listener,
@@ -234,7 +209,7 @@ export class IpcClientController<
     if (handlers.length === 0) {
       const listener = this.#ipcRendererEventListeners.get(event)
       if (listener) {
-        debug(`IpcClientController.off: ${this.name}:${event}: off global listener (channel: ${channel})`)
+        this.#debug('remove global event listener', null, event, 'c')
 
         IpcClientController.#getGlobalIpcController().off(this.name, event, listener)
       }
@@ -265,8 +240,7 @@ export class IpcClientController<
    * Uses `ipcRenderer.send()` to send to the server event listeners added with `IpcServerController.on()`.
    */
   send<K extends StringKey<ServerEvents>>(event: K, ...args: Parameters<ServerEvents[K]>) {
-    debug(`IpcClientController.send: ${this.name}:${event}: send (channel: ${this.#serverEventChannel(event)})`)
-    debug('args:', args)
+    this.#debug('send', { args }, event, 's')
 
     IpcClientController.#getGlobalIpcController().send(this.name, event, ...args)
   }
@@ -288,7 +262,7 @@ export class IpcClientController<
 
   static #getGlobalIpcController(): GlobalIpcClientController {
     const global = typeof window !== 'undefined' ? window : globalThis
-    isNull(
+    assertIsNull(
       'IpcClientController: Can\'t find the "globalThis.$IpcClientController", Forgot to use "preloadInit" in the preload script?',
       global.$IpcClientController,
     )
@@ -305,34 +279,34 @@ export function preloadInit(ipcRenderer: Electron.IpcRenderer, autoRegister: boo
         throw new RangeError(`${this.name}.invoke: ${controllerName}: controller not registered.`)
       }
 
-      return ipcRenderer.invoke(channelGenerator(controllerName, name, 'Invoke'), ...args)
+      return ipcRenderer.invoke(channelGenerator(controllerName, name, 'i'), ...args)
     },
-    off(controllerName: string, name: string, listener: RendererEventListener) {
+    off(controllerName: string, event: string, listener: RendererEventListener) {
       if (!IpcClientControllerRegistered.has(controllerName)) {
         throw new RangeError(`${this.name}.off: ${controllerName}: controller not registered.`)
       }
 
-      ipcRenderer.off(channelGenerator(controllerName, name, 'ClientEvent'), listener)
+      ipcRenderer.off(channelGenerator(controllerName, event, 'c'), listener)
     },
-    on(controllerName: string, name: string, listener: RendererEventListener) {
+    on(controllerName: string, event: string, listener: RendererEventListener) {
       if (!IpcClientControllerRegistered.has(controllerName)) {
         throw new RangeError(`${this.name}.on: ${controllerName}: controller not registered.`)
       }
 
-      ipcRenderer.on(channelGenerator(controllerName, name, 'ClientEvent'), listener)
+      ipcRenderer.on(channelGenerator(controllerName, event, 'c'), listener)
     },
     register(name: string) {
       if (name.trim() !== '' && !IpcClientControllerRegistered.has(name)) {
-        debug(`${this.name}.register: ${name}`)
+        debug('register', { controller: name })
         IpcClientControllerRegistered.add(name)
       }
     },
-    send(controllerName: string, name: string, ...args: any[]) {
+    send(controllerName: string, event: string, ...args: any[]) {
       if (!IpcClientControllerRegistered.has(controllerName)) {
         throw new RangeError(`${this.name}.send: ${controllerName}: controller not registered.`)
       }
 
-      ipcRenderer.send(channelGenerator(controllerName, name, 'ServerEvent'), ...args)
+      ipcRenderer.send(channelGenerator(controllerName, event, 's'), ...args)
     },
   }
 

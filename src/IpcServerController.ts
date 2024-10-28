@@ -1,6 +1,6 @@
 import isPromise from 'is-promise'
 import type { AnyFunction, EventFunction, FunctionsObj, InvokeReturnObject, StringKey } from './common.ts'
-import { ErrorHandler, InvokeReturnStatus, channelGenerator, debug, isNull } from './common.ts'
+import { ErrorHandler, InvokeReturnStatus, assertIsNull, channelGenerator, debug } from './common.ts'
 
 export type MainInvokeHandler<T extends AnyFunction = AnyFunction> = EventFunction<Electron.IpcMainInvokeEvent, T>
 
@@ -19,7 +19,7 @@ export type TrustHandlerFunc = (
 
 export type WebContentsGetterFunc = () => Promise<Electron.WebContents[]> | Electron.WebContents[]
 
-const ipcMainIsNull: (value: any) => asserts value is Electron.IpcMain = isNull.bind(
+const ipcMainIsNull: (value: any) => asserts value is Electron.IpcMain = assertIsNull.bind(
   this,
   'IpcServerController.IpcMain is null.',
 )
@@ -90,14 +90,6 @@ export class IpcServerController<
    */
   static IpcMain: Electron.IpcMain | undefined
 
-  readonly #name: string = ''
-
-  readonly #clientEvents: Readonly<ClientEvents> = new Proxy(this as any, clientEventsProxy)
-
-  readonly #functions: Functions = new Proxy(this as any, functionsProxy)
-
-  readonly #serverEvents: ServerEventsProxy<ServerEvents> = new Proxy(this as any, serverEventsProxy)
-
   /**
    * This controller specific trust handler.
    *
@@ -112,9 +104,19 @@ export class IpcServerController<
    */
   webContentsGetter: WebContentsGetterFunc | undefined
 
-  #ipcMainEventListeners = new Map<string, MainEventListener>()
+  readonly #name: string = ''
 
-  #eventsListeners = new Map<string, { listener: MainEventListener; once: boolean }[]>()
+  readonly #clientEvents: Readonly<ClientEvents> = new Proxy(this as any, clientEventsProxy)
+
+  readonly #functions: Functions = new Proxy(this as any, functionsProxy)
+
+  readonly #serverEvents: ServerEventsProxy<ServerEvents> = new Proxy(this as any, serverEventsProxy)
+
+  readonly #debug = debug.bind(this)
+
+  readonly #ipcMainEventListeners = new Map<string, MainEventListener>()
+
+  readonly #eventsListeners = new Map<string, { listener: MainEventListener; once: boolean }[]>()
 
   constructor(name: string) {
     if (name.trim() === '') {
@@ -133,7 +135,7 @@ export class IpcServerController<
   /**
    * The proxy object for the `send()` method.
    *
-   * Usage: `IpcClientController.clientEvents.[ClientEvent](...args)`
+   * Usage: `IpcClientController.clientEvents.[c](...args)`
    */
   get clientEvents() {
     return this.#clientEvents
@@ -151,22 +153,22 @@ export class IpcServerController<
   /**
    * The proxy object for the `on()` method.
    *
-   * Usage: `IpcClientController.serverEvents.[ServerEvent] = [listener]`
+   * Usage: `IpcClientController.serverEvents.[s] = [listener]`
    */
   get serverEvents() {
     return this.#serverEvents
   }
 
   #clientEventChannel(event: string) {
-    return channelGenerator(this.name, event, 'ClientEvent')
+    return channelGenerator(this.name, event, 'c')
   }
 
   #invokeChannel(name: string) {
-    return channelGenerator(this.name, name, 'Invoke')
+    return channelGenerator(this.name, name, 'i')
   }
 
   #serverEventChannel(event: string) {
-    return channelGenerator(this.name, event, 'ServerEvent')
+    return channelGenerator(this.name, event, 's')
   }
 
   #addEventListener(event: StringKey<ServerEvents>, listener: AnyFunction, once = false) {
@@ -175,16 +177,14 @@ export class IpcServerController<
     const channel = this.#serverEventChannel(event)
 
     if (!this.#ipcMainEventListeners.has(event)) {
-      debug(`IpcServerController.#addEventListener: ${this.name}:${event}: add global listener (channel: ${channel})`)
+      this.#debug('add global event listener', null, event, 's')
 
       const listener = this.#ipcMainEventListener.bind(this, event)
       IpcServerController.IpcMain.on(channel, listener)
       this.#ipcMainEventListeners.set(event, listener)
     }
 
-    debug(
-      `IpcServerController.#addEventListener: ${this.name}:${event}: add listener (once: ${once}) (channel: ${channel})`,
-    )
+    this.#debug('add event listener', { once }, event, 's')
 
     const listeners = [
       ...(this.#eventsListeners.get(event) ?? []),
@@ -197,34 +197,49 @@ export class IpcServerController<
   }
 
   async #ipcMainEventListener(event: StringKey<ServerEvents>, eventObj: Electron.IpcMainEvent, ...args: any) {
-    const channel = this.#serverEventChannel(event)
-
     try {
       const trust = (this.trustHandler ?? IpcServerController.TrustHandler)(this, event, 'event', eventObj)
       if (trust === false || !(await trust)) {
-        debug(`IpcServerController.#ipcMainEventListener: ${this.name}:${event}: blocked (channel: ${channel})`)
+        this.#debug('blocked', null, event, 's')
         return
       }
     } catch (err) {
-      console.error('IpcServerController.#ipcMainEventListener: An error occurred in the trust handler:', err)
+      console.error('An error occurred in the trust handler:', err)
       return
     }
 
-    debug(`IpcServerController.#ipcMainEventListener: ${this.name}:${event}: received (channel: ${channel}) `)
-    debug('args:', args)
+    this.#debug('received', { args }, event, 's')
 
     const listeners = this.#eventsListeners.get(event) ?? []
     const onceListeners = listeners.filter((item) => {
       try {
         item.listener(eventObj, ...args)
       } catch (error) {
-        debug(`IpcServerController.#ipcMainEventListener: ${this.name}:${event}: catch error (channel: ${channel}) `)
-        debug('error:', error)
+        this.#debug('catch error', error, event, 's')
       }
       return item.once
     })
     for (const item of onceListeners) {
       this.off(event, item.listener)
+    }
+  }
+
+  #callWebContentsGetter(cb: (items: Electron.WebContents[]) => void) {
+    try {
+      const getter = (this.webContentsGetter ?? IpcServerController.WebContentsGetter ?? (() => []))()
+      if (isPromise(getter)) {
+        getter
+          .then((items) => {
+            cb(items)
+          })
+          .catch((err) => {
+            console.error('An error occurred in the webContents getter:', err)
+          })
+      } else {
+        cb(getter)
+      }
+    } catch (err) {
+      console.error('An error occurred in the webContents getter:', err)
     }
   }
 
@@ -235,22 +250,19 @@ export class IpcServerController<
     event: Electron.IpcMainInvokeEvent,
     ...args: any
   ): Promise<InvokeReturnObject> {
-    const channel = this.#invokeChannel(name)
-
-    debug(`IpcServerController.#handle: ${this.name}:${name}: received (channel: ${channel})`)
-    debug('args:', args)
+    this.#debug('received', { args }, name, 'i')
 
     try {
       const trust = (this.trustHandler ?? IpcServerController.TrustHandler)(this, name, 'invoke', event)
       if (trust === false || !(await trust)) {
-        debug(`IpcServerController.#handle: ${this.name}:${name}: blocked (channel: ${channel})`)
+        this.#debug('blocked', null, name, 'i')
         return {
           status: InvokeReturnStatus.error,
           value: ErrorHandler.serialize(new Error('Blocked by trust handler')),
         }
       }
     } catch (err) {
-      console.error('IpcServerController.#handle: An error occurred in the trust handler:', err)
+      console.error('An error occurred in the trust handler:', err)
       return {
         status: InvokeReturnStatus.error,
         value: ErrorHandler.serialize(new Error('Blocked by trust handler')),
@@ -262,15 +274,15 @@ export class IpcServerController<
       if (isPromise(value)) {
         value = await value
       }
-      debug(`IpcServerController.#handle: ${this.name}:${name}: send result (channel: ${channel})`)
-      debug('value:', value)
+
+      this.#debug('send result', { value }, name, 'i')
+
       return {
         status: InvokeReturnStatus.result,
         value,
       }
     } catch (err) {
-      debug(`IpcServerController.#handle: ${this.name}:${name}: catch error (channel: ${channel})`)
-      debug('error:', err)
+      this.#debug('catch error', err, name, 'i')
       return {
         status: InvokeReturnStatus.error,
         value: ErrorHandler.serialize(err),
@@ -283,13 +295,11 @@ export class IpcServerController<
     event: K,
     ...args: Parameters<ClientEvents[K]>
   ) {
-    const sender = (items: Electron.WebContents[]) => {
+    this.#callWebContentsGetter((items: Electron.WebContents[]) => {
       const channel = this.#clientEventChannel(event)
       for (const webContents of items) {
-        debug(
-          `IpcServerController.#send: ${this.name}:${event}: send (channel: ${channel}) (webContents: ${webContents.id} (frameId: ${frameId}))`,
-        )
-        debug('args:', args)
+        this.#debug('send', { args, webContents: webContents.id, frameId: frameId }, event, 'c')
+
         try {
           if (frameId === null) {
             webContents.send(channel, ...args)
@@ -297,30 +307,10 @@ export class IpcServerController<
             webContents.sendToFrame(frameId, channel, ...args)
           }
         } catch (err) {
-          console.error(
-            `IpcServerController.#send: An error occurred in the webContents.${frameId === null ? 'send' : 'sendToFrame'}:`,
-            err,
-          )
+          console.error(`An error occurred in the webContents.${frameId === null ? 'send' : 'sendToFrame'}:`, err)
         }
       }
-    }
-
-    try {
-      const getter = (this.webContentsGetter ?? IpcServerController.WebContentsGetter ?? (() => []))()
-      if (isPromise(getter)) {
-        getter
-          .then((items) => {
-            sender(items)
-          })
-          .catch((err) => {
-            console.error('IpcServerController.#send: An error occurred in the webContents getter:', err)
-          })
-      } else {
-        sender(getter)
-      }
-    } catch (err) {
-      console.error('IpcServerController.#send: An error occurred in the webContents getter:', err)
-    }
+    })
   }
 
   #tryPromise(result: any): Promise<any> | any {
@@ -336,11 +326,9 @@ export class IpcServerController<
   handle<K extends StringKey<Functions>>(name: K, handler: Functions[K]) {
     ipcMainIsNull(IpcServerController.IpcMain)
 
-    const channel = this.#invokeChannel(name)
+    this.#debug('add function handler', null, name, 'i')
 
-    debug(`IpcServerController.#handle: ${this.name}:${name}: handle (channel: ${channel})`)
-
-    IpcServerController.IpcMain.handle(channel, this.#handle.bind(this, name, false, handler))
+    IpcServerController.IpcMain.handle(this.#invokeChannel(name), this.#handle.bind(this, name, false, handler))
   }
 
   /**
@@ -351,11 +339,9 @@ export class IpcServerController<
   handleWithEvent<K extends StringKey<Functions>>(name: K, handler: MainInvokeHandler<Functions[K]>) {
     ipcMainIsNull(IpcServerController.IpcMain)
 
-    const channel = this.#invokeChannel(name)
+    this.#debug('add function handler with event', null, name, 'i')
 
-    debug(`IpcServerController.#handle: ${this.name}:${name}: handle (channel: ${channel})`)
-
-    IpcServerController.IpcMain.handle(channel, this.#handle.bind(this, name, true, handler))
+    IpcServerController.IpcMain.handle(this.#invokeChannel(name), this.#handle.bind(this, name, true, handler))
   }
 
   /**
@@ -369,7 +355,7 @@ export class IpcServerController<
 
     const channel = this.#serverEventChannel(event)
 
-    debug(`IpcServerController.off: ${this.name}:${event}: off listener (channel: ${channel})`)
+    this.#debug('remove event listener', null, event, 's')
 
     const handlers = (listener ? (this.#eventsListeners.get(event) ?? []) : []).filter(
       (item) => item.listener !== listener,
@@ -377,7 +363,7 @@ export class IpcServerController<
     if (handlers.length === 0) {
       const listener = this.#ipcMainEventListeners.get(event)
       if (listener) {
-        debug(`IpcServerController.off: ${this.name}:${event}: off global listener (channel: ${channel})`)
+        this.#debug('remove global event listener', null, event, 's')
 
         IpcServerController.IpcMain.off(channel, listener)
       }

@@ -1,15 +1,10 @@
+import callsites from 'callsites'
 import { deserializeError, serializeError } from 'serialize-error'
 
 declare global {
   namespace globalThis {
     // noinspection ES6ConvertVarToLetConst
     var ELECTRON_IPC_FLOW_DEBUG: string | undefined
-  }
-}
-
-declare namespace NodeJS {
-  interface ProcessEnv {
-    ELECTRON_IPC_FLOW_DEBUG?: string
   }
 }
 
@@ -37,9 +32,9 @@ export interface InvokeReturnObject<T = any> {
 
 export type StringKey<T> = Extract<keyof T, string>
 
-export type channelTypes = 'ClientEvent' | 'Invoke' | 'ServerEvent'
+export type ChannelTypes = 'c' | 'i' | 's'
 
-export const channelGenerator = (controller: string, event: string, type: channelTypes) =>
+export const channelGenerator = (controller: string, event: string, type: ChannelTypes) =>
   `$electron-ipc-flow$||${type}||${controller}||${event}`
 
 /**
@@ -54,23 +49,45 @@ export const ErrorHandler: ErrorHandlerInterface = {
   deserialize: deserializeError,
 }
 
-export function isDebug() {
-  return (typeof process === 'undefined' ? window : process.env).ELECTRON_IPC_FLOW_DEBUG === 'true'
-}
-
-export function isNull<T>(message: string, value?: T | null): asserts value is NonNullable<T> {
+export function assertIsNull<T>(message: string, value?: T | null): asserts value is NonNullable<T> {
   if (typeof value === 'undefined' || value === null) {
     throw new TypeError(message)
   }
 }
 
-export function debug(...args: any[]) {
+export function isDebug() {
+  return (typeof process === 'undefined' ? window : process.env).ELECTRON_IPC_FLOW_DEBUG === 'true'
+}
+
+export function debug(this: any, action: string, detail?: any, event?: string, channelType?: ChannelTypes) {
   if (!isDebug()) {
     return
   }
-  if (args.some((arg) => arg instanceof Error)) {
-    console.error(...args)
-  } else {
-    console.debug(...args)
+
+  const firstCallStack = callsites()[1]
+  if (typeof firstCallStack === 'undefined') {
+    return
   }
+
+  const typeName = firstCallStack.getTypeName()
+  const methodName = firstCallStack.getMethodName() ?? firstCallStack.getFunctionName() ?? '<anonymous>'
+  const controller = this?.name
+
+  const obj = {
+    controller,
+    method: `${typeName ? typeName.concat('.') : ''}${methodName}`,
+    action,
+    event,
+    channel: channelType ? channelGenerator(controller, event ?? 'x', channelType) : undefined,
+    [detail instanceof Error ? 'error' : 'detail']: detail,
+    source: `${firstCallStack.getFileName()}:${firstCallStack.getLineNumber()}:${firstCallStack.getColumnNumber()}`,
+  }
+
+  for (const key of Object.keys(obj)) {
+    if (typeof Reflect.get(obj, key) === 'undefined') {
+      Reflect.deleteProperty(obj, key)
+    }
+  }
+
+  console.debug(obj)
 }

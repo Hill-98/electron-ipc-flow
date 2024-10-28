@@ -30,12 +30,14 @@
     "prepare": "husky"
   },
   "bundledDependencies": [
+    "callsites",
     "is-promise",
     "serialize-error"
   ],
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
     "@types/node": "^20.0.0",
+    "callsites": "^4.2.0",
     "dts-bundle-generator": "^9.5.1",
     "electron": "^33.0.0",
     "husky": "^9.1.6",

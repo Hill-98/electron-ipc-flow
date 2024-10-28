@@ -168,16 +168,20 @@ You can check the definition file [`dist/index.d.ts`](https://unpkg.com/electron
 
 ## Debug
 
+> The internal `debug()` method uses the [callsites](https://www.npmjs.com/package/callsites) library to obtain the call stack, and callsites internally utilizes the [V8 stack trace API](https://v8.dev/docs/stack-trace-api).
+
 You can set the environment variable `ELECTRON_IPC_FLOW_DEBUG` to `true` to enable debug mode. In debug mode, some data will be output to the console (verbose level).
 
-**enable**: `process.env.ELECTRON_IPC_FLOW_DEBUG = 'true'` in main.js first line.
+**enable**: `process.env.ELECTRON_IPC_FLOW_DEBUG = 'true'` in `main.js` first line.
 
-**disable**: `process.env.ELECTRON_IPC_FLOW_DEBUG = 'false'` in main.js first line.
+**disable**: `process.env.ELECTRON_IPC_FLOW_DEBUG = 'false'` in `main.js` first line.
 
 **You should always disable debug mode on production release ! ! !**
 
 ## Thanks
 
+* [**callsites**](https://www.npmjs.com/package/callsites): Get callsites from the [V8 stack trace API](https://v8.dev/docs/stack-trace-api)
+  
 * [**serialize-error**](https://www.npmjs.com/package/serialize-error): Serialize/deserialize an error into a plain object
 
 Thanks to [JetBrains](https://jb.gg/OpenSourceSupport) for providing the JetBrains IDEs open source license.

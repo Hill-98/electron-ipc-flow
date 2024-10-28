@@ -55,9 +55,7 @@ export function assertIsNull<T>(message: string, value?: T | null): asserts valu
   }
 }
 
-export function isDebug() {
-  return (typeof process === 'undefined' ? window : process.env).ELECTRON_IPC_FLOW_DEBUG === 'true'
-}
+export const isDebug = () => (typeof process === 'undefined' ? window : process.env).ELECTRON_IPC_FLOW_DEBUG === 'true'
 
 export function debug(this: any, action: string, detail?: any, event?: string, channelType?: ChannelTypes) {
   if (!isDebug()) {

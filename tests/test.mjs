@@ -104,7 +104,7 @@ async function runTest(dir) {
   return new Promise((resolve, reject) => {
     const electron = spawn(ELECTRON_BIN, [dir], {
       shell: true,
-      stdio: ['inherit', process.stdout, process.stdout],
+      stdio: 'inherit',
     })
     electron.on('error', reject)
     electron.on('exit', (code) => {
@@ -117,12 +117,12 @@ async function runTest(dir) {
   })
 }
 
-test('ClientToServerTest', runTest.bind(this, await buildTest(join(__dirname, 'ClientToServerTest'))))
+await test('ClientToServerTest', runTest.bind(this, await buildTest(join(__dirname, 'ClientToServerTest'))))
 
-test('BroadcastTest', runTest.bind(this, await buildTest(join(__dirname, 'BroadcastTest'))))
+await test('BroadcastTest', runTest.bind(this, await buildTest(join(__dirname, 'BroadcastTest'))))
 
-test('ClientRegisterTest', runTest.bind(this, await buildTest(join(__dirname, 'ClientRegisterTest'))))
+await test('ClientRegisterTest', runTest.bind(this, await buildTest(join(__dirname, 'ClientRegisterTest'))))
 
-test('SendToHostTest', runTest.bind(this, await buildTest(join(__dirname, 'SendToHostTest'))))
+await test('SendToHostTest', runTest.bind(this, await buildTest(join(__dirname, 'SendToHostTest'))))
 
-test('TrustHandlerTest', runTest.bind(this, await buildTest(join(__dirname, 'TrustHandlerTest'))))
+await test('TrustHandlerTest', runTest.bind(this, await buildTest(join(__dirname, 'TrustHandlerTest'))))

@@ -19,11 +19,6 @@ export type TrustHandlerFunc = (
 
 export type WebContentsGetterFunc = () => Promise<Electron.WebContents[]> | Electron.WebContents[]
 
-const ipcMainIsNull: (value: any) => asserts value is Electron.IpcMain = assertIsNull.bind(
-  this,
-  'IpcServerController.IpcMain is null.',
-)
-
 const clientEventsProxy: ProxyHandler<IpcServerController> = {
   get(target, p) {
     if (typeof p === 'string') {
@@ -172,7 +167,7 @@ export class IpcServerController<
   }
 
   #addEventListener(event: StringKey<ServerEvents>, listener: AnyFunction, once = false) {
-    ipcMainIsNull(IpcServerController.IpcMain)
+    IpcServerController.#ipcMainIsNull(IpcServerController.IpcMain)
 
     const channel = this.#serverEventChannel(event)
 
@@ -324,7 +319,7 @@ export class IpcServerController<
    * Uses `IpcMain.handle()` to add a specific function handler.
    */
   handle<K extends StringKey<Functions>>(name: K, handler: Functions[K]) {
-    ipcMainIsNull(IpcServerController.IpcMain)
+    IpcServerController.#ipcMainIsNull(IpcServerController.IpcMain)
 
     this.#debug('add function handler', null, name, 'i')
 
@@ -337,7 +332,7 @@ export class IpcServerController<
    * @see {handle}
    */
   handleWithEvent<K extends StringKey<Functions>>(name: K, handler: MainInvokeHandler<Functions[K]>) {
-    ipcMainIsNull(IpcServerController.IpcMain)
+    IpcServerController.#ipcMainIsNull(IpcServerController.IpcMain)
 
     this.#debug('add function handler with event', null, name, 'i')
 
@@ -351,7 +346,7 @@ export class IpcServerController<
    * the corresponding event will be removed.
    */
   off<K extends StringKey<ServerEvents>>(event: K, listener?: MainEventListener<Functions[K]>) {
-    ipcMainIsNull(IpcServerController.IpcMain)
+    IpcServerController.#ipcMainIsNull(IpcServerController.IpcMain)
 
     const channel = this.#serverEventChannel(event)
 
@@ -408,5 +403,9 @@ export class IpcServerController<
     ...args: Parameters<ClientEvents[K]>
   ) {
     this.#send(frameId, event, ...args)
+  }
+
+  static #ipcMainIsNull(v?: Electron.IpcMain | null): asserts v is Electron.IpcMain {
+    assertIsNull('IpcServerController.IpcMain is null.', v)
   }
 }

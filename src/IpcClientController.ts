@@ -98,6 +98,7 @@ export class IpcClientController<
     const g = typeof globalThis === 'undefined' ? window : globalThis
     // 调用 preloadInit 时 autoRegister 参数为 true 时可用
     if (typeof g.$IpcClientController?.register === 'function') {
+      this.#debug('auto register')
       g.$IpcClientController.register(this.name)
     }
   }
@@ -271,40 +272,34 @@ export class IpcClientController<
 }
 
 export function preloadInit(ipcRenderer: Electron.IpcRenderer, autoRegister: boolean) {
+  function checkControllerRegistered(controllerName: string) {
+    if (!IpcClientControllerRegistered.has(controllerName)) {
+      throw new RangeError(`IpcClientController "${controllerName}" not registered.`)
+    }
+  }
+
   // noinspection JSUnusedGlobalSymbols
   const obj = {
-    name: 'GlobalIpcController',
     invoke(controllerName: string, name: string, ...args: any[]) {
-      if (!IpcClientControllerRegistered.has(controllerName)) {
-        throw new RangeError(`${this.name}.invoke: ${controllerName}: controller not registered.`)
-      }
+      checkControllerRegistered(controllerName)
 
       return ipcRenderer.invoke(channelGenerator(controllerName, name, 'i'), ...args)
     },
     off(controllerName: string, event: string, listener: RendererEventListener) {
-      if (!IpcClientControllerRegistered.has(controllerName)) {
-        throw new RangeError(`${this.name}.off: ${controllerName}: controller not registered.`)
-      }
+      checkControllerRegistered(controllerName)
 
       ipcRenderer.off(channelGenerator(controllerName, event, 'c'), listener)
     },
     on(controllerName: string, event: string, listener: RendererEventListener) {
-      if (!IpcClientControllerRegistered.has(controllerName)) {
-        throw new RangeError(`${this.name}.on: ${controllerName}: controller not registered.`)
-      }
+      checkControllerRegistered(controllerName)
 
       ipcRenderer.on(channelGenerator(controllerName, event, 'c'), listener)
     },
     register(name: string) {
-      if (name.trim() !== '' && !IpcClientControllerRegistered.has(name)) {
-        debug('register', { controller: name })
-        IpcClientControllerRegistered.add(name)
-      }
+      IpcClientControllerRegistered.add(name)
     },
     send(controllerName: string, event: string, ...args: any[]) {
-      if (!IpcClientControllerRegistered.has(controllerName)) {
-        throw new RangeError(`${this.name}.send: ${controllerName}: controller not registered.`)
-      }
+      checkControllerRegistered(controllerName)
 
       ipcRenderer.send(channelGenerator(controllerName, event, 's'), ...args)
     },

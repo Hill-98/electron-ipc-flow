@@ -31,19 +31,9 @@ async function runTest() {
   assert.strictEqual(includeCount(body, 'say electron-ipc-flow 1'), 1, 'test registered controller call')
   assert.strictEqual(includeCount(body, 'hey electron-ipc-flow 1'), 1, 'test registered controller client event')
   assert.strictEqual(
-    includeCount(body, 'GlobalIpcController.invoke: controller2: controller not registered.'),
-    1,
-    'test not registered controller invoke',
-  )
-  assert.strictEqual(
-    includeCount(body, 'GlobalIpcController.on: controller2: controller not registered.'),
-    1,
-    'test not registered controller client event',
-  )
-  assert.strictEqual(
-    includeCount(body, 'GlobalIpcController.send: controller2: controller not registered.'),
-    1,
-    'test not registered controller server event',
+    includeCount(body, 'IpcClientController "controller2" not registered.'),
+    3,
+    'test not registered controller',
   )
   assert.strictEqual(
     includeCount(CONTROLLER_EVENT_RESULTS, 'hi electron-ipc-flow 1'),

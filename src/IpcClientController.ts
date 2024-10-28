@@ -1,4 +1,4 @@
-import type { AnyFunction, EventFunction, FunctionsObj, InvokeReturnObject, StringKey } from './common.ts'
+import type { AnyFunction, FunctionsObj, InvokeReturnObject, IpcEventListener, StringKey } from './common.ts'
 import { ErrorHandler, InvokeReturnStatus, assertIsNull, channelGenerator, debug } from './common.ts'
 
 declare global {
@@ -20,13 +20,13 @@ declare global {
   }
 }
 
-export type RendererEventListener<T extends AnyFunction = AnyFunction> = EventFunction<Electron.IpcRendererEvent, T>
+export type RendererEventListener<T extends AnyFunction = AnyFunction> = IpcEventListener<Electron.IpcRendererEvent, T>
 
-export type ClientEventsProxy<T extends FunctionsObj> = {
+export type RendererEventListeners<T extends FunctionsObj<T>> = {
   [P in keyof T]: RendererEventListener<T[P]>
 }
 
-export type ClientFunctionsProxy<T extends FunctionsObj> = {
+export type ClientFunctionsProxy<T extends FunctionsObj<T>> = {
   readonly [P in keyof T]: (...args: Parameters<T[P]>) => Promise<Awaited<ReturnType<T[P]>>>
 }
 
@@ -71,13 +71,13 @@ const serverEventsProxy: ProxyHandler<IpcClientController> = {
  * The `ServerEvents` generic defines the constraints for the events that can be sent using the `send()` method.
  */
 export class IpcClientController<
-  Functions extends FunctionsObj = any,
-  ClientEvents extends FunctionsObj = any,
-  ServerEvents extends FunctionsObj = any,
+  Functions extends FunctionsObj<Functions> = any,
+  ClientEvents extends FunctionsObj<ClientEvents> = any,
+  ServerEvents extends FunctionsObj<ServerEvents> = any,
 > {
   readonly #name: string = ''
 
-  readonly #clientEvents: ClientEventsProxy<ClientEvents> = new Proxy(this as any, clientEventsProxy)
+  readonly #clientEvents: RendererEventListeners<ClientEvents> = new Proxy(this as any, clientEventsProxy)
 
   readonly #functions: ClientFunctionsProxy<Functions> = new Proxy(this as any, functionsProxy)
 
@@ -113,7 +113,7 @@ export class IpcClientController<
   /**
    * The proxy object for the `on()` method.
    *
-   * Usage: `IpcClientController.clientEvents.[c] = [listener]`
+   * Usage: `IpcClientController.clientEvents.[ClientEvent] = [listener]`
    */
   get clientEvents() {
     return this.#clientEvents
@@ -131,7 +131,7 @@ export class IpcClientController<
   /**
    * The proxy object for the `send()` method.
    *
-   * Usage: `IpcClientController.serverEvents.[s](...args)`
+   * Usage: `IpcClientController.serverEvents.[ServerEvent](...args)`
    */
   get serverEvents() {
     return this.#serverEvents

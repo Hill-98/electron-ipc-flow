@@ -16,9 +16,9 @@ export interface ErrorHandlerInterface {
 
 export type AnyFunction = (...args: any[]) => any
 
-export type EventFunction<T, K extends AnyFunction = AnyFunction> = (event: T, ...args: Parameters<K>) => ReturnType<K>
+export type FunctionsObj<T> = Record<StringKey<T>, AnyFunction>
 
-export type FunctionsObj = Record<string, AnyFunction>
+export type IpcEventListener<T, K extends AnyFunction = AnyFunction> = (event: T, ...args: Parameters<K>) => void
 
 export enum InvokeReturnStatus {
   error,

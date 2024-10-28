@@ -1,21 +1,32 @@
 import isPromise from 'is-promise'
-import type { AnyFunction, EventFunction, FunctionsObj, InvokeReturnObject, StringKey } from './common.ts'
+import type { AnyFunction, FunctionsObj, InvokeReturnObject, IpcEventListener, StringKey } from './common.ts'
 import { ErrorHandler, InvokeReturnStatus, assertIsNull, channelGenerator, debug } from './common.ts'
 
-export type MainInvokeHandler<T extends AnyFunction = AnyFunction> = EventFunction<Electron.IpcMainInvokeEvent, T>
+export type MainInvokeHandler<T extends AnyFunction> = (
+  event: Electron.IpcMainInvokeEvent,
+  ...args: Parameters<T>
+) => ReturnType<T>
 
-export type MainEventListener<T extends AnyFunction = AnyFunction> = EventFunction<Electron.IpcMainEvent, T>
+export type MainEventListener<T extends AnyFunction = AnyFunction> = IpcEventListener<Electron.IpcMainEvent, T>
 
-export type ServerEventsProxy<T extends FunctionsObj> = {
+export type MainEventListeners<T extends FunctionsObj<T>> = {
   [P in keyof T]: MainEventListener<T[P]>
 }
 
-export type TrustHandlerFunc = (
-  controller: IpcServerController,
-  name: string,
-  type: 'event' | 'invoke',
-  event: Electron.IpcMainInvokeEvent,
-) => Promise<boolean> | boolean
+export type TrustHandlerFunc = {
+  (
+    controller: IpcServerController,
+    name: string,
+    type: 'event',
+    event: Electron.IpcMainInvokeEvent,
+  ): Promise<boolean> | boolean
+  (
+    controller: IpcServerController,
+    name: string,
+    type: 'invoke',
+    event: Electron.IpcMainInvokeEvent,
+  ): Promise<boolean> | boolean
+}
 
 export type WebContentsGetterFunc = () => Promise<Electron.WebContents[]> | Electron.WebContents[]
 
@@ -59,9 +70,9 @@ const serverEventsProxy: ProxyHandler<IpcServerController> = {
  * The `ServerEvents` generic defines the constraints for the events that can be listened to using `on()`, `once()` and `off()`.
  */
 export class IpcServerController<
-  Functions extends FunctionsObj = any,
-  ClientEvents extends FunctionsObj = any,
-  ServerEvents extends FunctionsObj = any,
+  Functions extends FunctionsObj<Functions> = any,
+  ClientEvents extends FunctionsObj<ClientEvents> = any,
+  ServerEvents extends FunctionsObj<ServerEvents> = any,
 > {
   /**
    * `IpcServerController` calls the trust handler when it receives a call or event.
@@ -105,7 +116,7 @@ export class IpcServerController<
 
   readonly #functions: Functions = new Proxy(this as any, functionsProxy)
 
-  readonly #serverEvents: ServerEventsProxy<ServerEvents> = new Proxy(this as any, serverEventsProxy)
+  readonly #serverEvents: MainEventListeners<ServerEvents> = new Proxy(this as any, serverEventsProxy)
 
   readonly #debug = debug.bind(this)
 
@@ -130,7 +141,7 @@ export class IpcServerController<
   /**
    * The proxy object for the `send()` method.
    *
-   * Usage: `IpcClientController.clientEvents.[c](...args)`
+   * Usage: `IpcClientController.clientEvents.[ClientEvent](...args)`
    */
   get clientEvents() {
     return this.#clientEvents
@@ -148,7 +159,7 @@ export class IpcServerController<
   /**
    * The proxy object for the `on()` method.
    *
-   * Usage: `IpcClientController.serverEvents.[s] = [listener]`
+   * Usage: `IpcClientController.serverEvents.[ServerEvent] = [listener]`
    */
   get serverEvents() {
     return this.#serverEvents
@@ -345,7 +356,7 @@ export class IpcServerController<
    * If the `listener` parameter is not provided, all listeners for
    * the corresponding event will be removed.
    */
-  off<K extends StringKey<ServerEvents>>(event: K, listener?: MainEventListener<Functions[K]>) {
+  off<K extends StringKey<ServerEvents>>(event: K, listener?: MainEventListener<ServerEvents[K]>) {
     IpcServerController.#ipcMainIsNull(IpcServerController.IpcMain)
 
     const channel = this.#serverEventChannel(event)

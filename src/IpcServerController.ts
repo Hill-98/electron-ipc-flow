@@ -368,6 +368,10 @@ export class IpcServerController<
    * the corresponding event will be removed.
    */
   off<K extends StringKey<ServerEvents>>(event: K, listener?: MainEventListener<ServerEvents[K]>) {
+    if (!this.#ipcMainEventListeners.has(event)) {
+      return
+    }
+
     IpcServerController.#ipcMainIsNull(IpcServerController.IpcMain)
 
     const channel = this.#serverEventChannel(event)
@@ -383,6 +387,7 @@ export class IpcServerController<
         this.#debug('remove global event listener', null, event, 's')
 
         IpcServerController.IpcMain.off(channel, listener)
+        this.#ipcMainEventListeners.delete(event)
       }
       this.#eventsListeners.delete(event)
     } else {

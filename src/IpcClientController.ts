@@ -9,8 +9,6 @@ declare global {
     interface GlobalIpcClientController {
       invoke(controllerName: string, name: string, ...args: any): Promise<InvokeReturnObject>
 
-      off(controllerName: string, event: string, listener: RendererEventListener): void
-
       on(controllerName: string, event: string, listener: RendererEventListener): void
 
       register?: (controllerName: string) => void
@@ -242,22 +240,21 @@ export class IpcClientController<
    * the corresponding event will be removed.
    */
   off<K extends StringKey<ClientEvents>>(event: K, listener?: RendererEventListener<ClientEvents[K]>) {
+    if (!this.#ipcRendererEventListeners.has(event)) {
+      return
+    }
+
     this.#debug('remove event listener', null, event, 'c')
 
-    const handlers = (listener ? (this.#eventsListeners.get(event) ?? []) : []).filter(
+    /**
+     * Why not use `IpcRenderer.off()` to remove the global event listener?
+     *
+     * Because the function passed from the renderer to the preload script cannot be equal.
+     */
+    const listeners = (listener ? (this.#eventsListeners.get(event) ?? []) : []).filter(
       (item) => item.listener !== listener,
     )
-    if (handlers.length === 0) {
-      const listener = this.#ipcRendererEventListeners.get(event)
-      if (listener) {
-        this.#debug('remove global event listener', null, event, 'c')
-
-        IpcClientController.#getGlobalIpcController().off(this.name, event, listener)
-      }
-      this.#eventsListeners.delete(event)
-    } else {
-      this.#eventsListeners.set(event, handlers)
-    }
+    this.#eventsListeners.set(event, listeners)
   }
 
   /**
@@ -324,11 +321,6 @@ export function preloadInit(ipcRenderer: Electron.IpcRenderer, autoRegister: boo
       checkControllerRegistered(controllerName)
 
       return ipcRenderer.invoke(channelGenerator(controllerName, name, 'i'), ...args)
-    },
-    off(controllerName: string, event: string, listener: RendererEventListener) {
-      checkControllerRegistered(controllerName)
-
-      ipcRenderer.off(channelGenerator(controllerName, event, 'c'), listener)
     },
     on(controllerName: string, event: string, listener: RendererEventListener) {
       checkControllerRegistered(controllerName)

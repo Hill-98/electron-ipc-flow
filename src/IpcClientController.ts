@@ -89,11 +89,18 @@ export class IpcClientController<
 
   readonly #eventsListeners = new Map<string, { listener: RendererEventListener; once: boolean }[]>()
 
-  constructor(name: string) {
+  #listeners?: Partial<RendererEventListeners<ClientEvents>>
+
+  /**
+   * @param name {string} Controller name
+   * @param listeners {Partial<RendererEventListeners<ClientEvents>>=} {@link listeners}
+   */
+  constructor(name: string, listeners?: Partial<RendererEventListeners<ClientEvents>>) {
     if (name.trim() === '') {
       throw new SyntaxError('IpcClientController: "name" cannot be an empty string.')
     }
     this.#name = name
+    this.listeners = listeners
 
     const g = typeof globalThis === 'undefined' ? window : globalThis
     // 调用 preloadInit 时 autoRegister 参数为 true 时可用
@@ -135,6 +142,39 @@ export class IpcClientController<
    */
   get serverEvents() {
     return this.#serverEvents
+  }
+
+  get listeners() {
+    return this.#listeners
+  }
+
+  /**
+   * Use the `on()` to set all properties of an object as event listeners, with the
+   * property names being used as event names.
+   *
+   * If the value is set to `undefined` or if the property has been set previously, the
+   * existing event listener will be removed using `off()` first.
+   *
+   * @see {on}
+   * @see {off}
+   */
+  set listeners(value: Partial<RendererEventListeners<ClientEvents>> | undefined) {
+    // noinspection DuplicatedCode
+    if (typeof this.#listeners === 'object') {
+      for (const event in this.#listeners) {
+        if (this.#listeners[event]) {
+          this.off(event, this.#listeners[event])
+        }
+      }
+    }
+    this.#listeners = value
+    if (typeof this.#listeners === 'object') {
+      for (const event in this.#listeners) {
+        if (this.#listeners[event]) {
+          this.on(event, this.#listeners[event])
+        }
+      }
+    }
   }
 
   #addEventListener(event: StringKey<ClientEvents>, listener: AnyFunction, once = false) {

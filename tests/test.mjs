@@ -123,6 +123,8 @@ await test('BroadcastTest', runTest.bind(this, await buildTest(join(__dirname, '
 
 await test('ClientRegisterTest', runTest.bind(this, await buildTest(join(__dirname, 'ClientRegisterTest'))))
 
+await test('QuickPropertyTest', runTest.bind(this, await buildTest(join(__dirname, 'QuickPropertyTest'))))
+
 await test('SendToHostTest', runTest.bind(this, await buildTest(join(__dirname, 'SendToHostTest'))))
 
 await test('TrustHandlerTest', runTest.bind(this, await buildTest(join(__dirname, 'TrustHandlerTest'))))

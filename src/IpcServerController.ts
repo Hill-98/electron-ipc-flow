@@ -351,6 +351,17 @@ export class IpcServerController<
   }
 
   /**
+   * Uses `IpcMain.removeHandler()` to remove a specific function handler.
+   */
+  removeHandler<K extends StringKey<Functions>>(name: K) {
+    IpcServerController.#ipcMainIsNull(IpcServerController.IpcMain)
+
+    this.#debug('remove function handler', null, name, 'i')
+
+    IpcServerController.IpcMain.removeHandler(this.#invokeChannel(name))
+  }
+
+  /**
    * Removes event listeners added using `on()` and `once()`.
    *
    * If the `listener` parameter is not provided, all listeners for

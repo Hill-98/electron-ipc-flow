@@ -124,11 +124,22 @@ export class IpcServerController<
 
   readonly #eventsListeners = new Map<string, { listener: MainEventListener; once: boolean }[]>()
 
-  constructor(name: string) {
+  #handlers?: Partial<Functions>
+
+  #listeners?: Partial<MainEventListeners<ServerEvents>>
+
+  /**
+   * @param name {string} Controller name
+   * @param handlers {Partial<Functions>=} {@link handlers}
+   * @param listeners {Partial<MainEventListeners<ServerEvents>>=} {@link listeners}
+   */
+  constructor(name: string, handlers?: Partial<Functions>, listeners?: Partial<MainEventListeners<ServerEvents>>) {
     if (name.trim() === '') {
       throw new SyntaxError('IpcBroadcastController: "name" cannot be an empty string.')
     }
     this.#name = name
+    this.handlers = handlers
+    this.listeners = listeners
   }
 
   /**
@@ -163,6 +174,69 @@ export class IpcServerController<
    */
   get serverEvents() {
     return this.#serverEvents
+  }
+
+  get handlers() {
+    return this.#handlers
+  }
+
+  /**
+   * Use the `handle()` to set all properties of an object as function handlers, with the
+   * property names being used as function names.
+   *
+   * If the value is set to `undefined` or if the property has been set previously, the
+   * existing function handler will be removed using `removeHandler()` first.
+   *
+   * @see {handle}
+   * @see {removeHandler}
+   */
+  set handlers(value: Partial<Functions> | undefined) {
+    if (typeof this.#handlers === 'object') {
+      for (const name in this.#handlers) {
+        this.removeHandler(name)
+      }
+    }
+    this.#handlers = value
+    if (typeof this.#handlers === 'object') {
+      for (const name in this.#handlers) {
+        if (this.#handlers[name]) {
+          this.handle(name, this.#handlers[name])
+        }
+      }
+    }
+  }
+
+  get listeners() {
+    return this.#listeners
+  }
+
+  /**
+   * Use the `on` method to set all properties of an object as event listeners, with the
+   * property names being used as event names.
+   *
+   * If the value is set to `undefined` or if the property has been set previously, the
+   * existing event listener will be removed using `off` first.
+   *
+   * @see {on}
+   * @see {off}
+   */
+  set listeners(value: Partial<MainEventListeners<ServerEvents>> | undefined) {
+    // noinspection DuplicatedCode
+    if (typeof this.#listeners === 'object') {
+      for (const event in this.#listeners) {
+        if (this.#listeners[event]) {
+          this.off(event, this.#listeners[event])
+        }
+      }
+    }
+    this.#listeners = value
+    if (typeof this.#listeners === 'object') {
+      for (const event in this.#listeners) {
+        if (this.#listeners[event]) {
+          this.on(event, this.#listeners[event])
+        }
+      }
+    }
   }
 
   #clientEventChannel(event: string) {

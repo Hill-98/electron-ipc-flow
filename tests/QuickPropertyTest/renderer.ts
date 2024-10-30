@@ -4,7 +4,7 @@ client.send('say', 'electron-ipc-flow')
 
 client.listeners = {
   hi(_, who) {
-    document.body.textContent += `hi ${who}`
+    document.body.textContent += `hi1 ${who}`
     document.body.textContent += '|'
   },
 }
@@ -15,7 +15,7 @@ document.body.textContent += '|'
 
 client.listeners = {
   hi(_, who) {
-    document.body.textContent += `hi hi ${who}`
+    document.body.textContent += `hi2 ${who}`
     document.body.textContent += '|'
   },
 }

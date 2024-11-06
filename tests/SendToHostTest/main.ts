@@ -22,7 +22,7 @@ async function createBrowserWindow() {
 async function getFrame() {
   return new Promise<Electron.WebFrameMain>((resolve) => {
     server.once('say', (e) => {
-      resolve(e.senderFrame)
+      resolve(e.senderFrame as Electron.WebFrameMain)
     })
   })
 }

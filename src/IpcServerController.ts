@@ -238,9 +238,9 @@ export class IpcServerController<
     if (!this.#ipcMainEventListeners.has(event)) {
       this.#debug('add global event listener', null, event, 's')
 
-      const listener = this.#ipcMainEventListener.bind(this, event)
-      IpcServerController.IpcMain.on(channel, listener)
-      this.#ipcMainEventListeners.set(event, listener)
+      const globalListener = this.#ipcMainEventListener.bind(this, event)
+      IpcServerController.IpcMain.on(channel, globalListener)
+      this.#ipcMainEventListeners.set(event, globalListener)
     }
 
     this.#debug('add event listener', { once }, event, 's')
@@ -287,13 +287,9 @@ export class IpcServerController<
     try {
       const getter = (this.webContentsGetter ?? IpcServerController.WebContentsGetter ?? (() => []))()
       if (isPromise(getter)) {
-        getter
-          .then((items) => {
-            cb(items)
-          })
-          .catch((err) => {
-            console.error('An error occurred in the webContents getter:', err)
-          })
+        getter.then(cb).catch((err) => {
+          console.error('An error occurred in the webContents getter:', err)
+        })
       } else {
         cb(getter)
       }

@@ -158,9 +158,9 @@ export class IpcClientController<
     if (!this.#ipcRendererEventListeners.has(event)) {
       this.#debug('add global event listener', null, event, 'c')
 
-      const listener = this.#ipcRendererEventListener.bind(this, event)
-      IpcClientController.#getGlobalIpcController().on(this.name, event, listener)
-      this.#ipcRendererEventListeners.set(event, listener)
+      const globalListener = this.#ipcRendererEventListener.bind(this, event)
+      IpcClientController.#getGlobalIpcController().on(this.name, event, globalListener)
+      this.#ipcRendererEventListeners.set(event, globalListener)
     }
 
     this.#debug('add event listener', { once }, event, 'c')
@@ -210,6 +210,21 @@ export class IpcClientController<
     }
 
     return result.value
+  }
+
+  postMessage<K extends StringKey<ServerEvents>>(event: K, message: any, transfer?: MessagePort[]) {
+    this.#debug('postMessage', { message }, event, 's')
+
+    globalThis.postMessage(
+      {
+        $action: 'postMessage.send',
+        controller: this.name,
+        event,
+        message,
+      },
+      '*',
+      transfer,
+    )
   }
 
   /**

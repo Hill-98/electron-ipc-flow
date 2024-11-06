@@ -37,9 +37,9 @@ process.env.ELECTRON_IPC_FLOW_DEBUG = 'true'
 
 IpcServerController.IpcMain = ipcMain
 
-server.serverEvents.hi = (_, who) => {
+server.on('hi', (_, who) => {
   CONTROLLER_EVENT_RESULTS.push(`hi ${who}`)
-}
+})
 
 const hi = (_: Electron.IpcMainEvent, who: string) => {
   CONTROLLER_EVENT_RESULTS.push(`hi ${who} off`)

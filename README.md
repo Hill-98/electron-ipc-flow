@@ -6,7 +6,7 @@ Just focus on the IPC handlers and calls, without any trivial matters; everythin
 
 ## Features
 
-* Just like using local functions.
+* Invoke and send just like using a local function.
 * Type declarations are in one place, so you can also use [JSDoc](https://jsdoc.app/).
 * All methods are type-safe.
 * Everything is module, with no `window` and `global.d.ts`.
@@ -74,7 +74,7 @@ import { server } from './hello.ts'
 
 IpcServerController.IpcMain = ipcMain
 
-server.on('say', (event, who) => {
+server.on('say', (e, who) => {
   console.log(`Hello ${who}!`) // Hello World!
 })
 
@@ -132,7 +132,7 @@ preloadInit(contextBridge, ipcRenderer)
 // renderer.ts
 import { client } from './hello.ts'
 
-client.on('say', (event, who) => {
+client.on('say', (e, who) => {
   console.log(`Hello ${who}!`) // Hello World!
 })
 ```

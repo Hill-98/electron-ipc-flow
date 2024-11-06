@@ -30,16 +30,6 @@ export type ClientFunctionsProxy<T extends FunctionsObj<T>> = {
 
 const IpcClientControllerRegistered = new Set<string>()
 
-const clientEventsProxy: ProxyHandler<IpcClientController> = {
-  set(target, p, newValue) {
-    if (typeof p === 'string') {
-      target.on(p, newValue)
-      return true
-    }
-    return false
-  },
-}
-
 const functionsProxy: ProxyHandler<IpcClientController> = {
   get(target, p) {
     if (typeof p === 'string') {
@@ -49,7 +39,7 @@ const functionsProxy: ProxyHandler<IpcClientController> = {
   },
 }
 
-const serverEventsProxy: ProxyHandler<IpcClientController> = {
+const sendersProxy: ProxyHandler<IpcClientController> = {
   get(target, p) {
     if (typeof p === 'string') {
       return target.send.bind(target, p)
@@ -75,11 +65,9 @@ export class IpcClientController<
 > {
   readonly #name: string = ''
 
-  readonly #clientEvents: RendererEventListeners<ClientEvents> = new Proxy(this as any, clientEventsProxy)
-
   readonly #functions: ClientFunctionsProxy<Functions> = new Proxy(this as any, functionsProxy)
 
-  readonly #serverEvents: Readonly<ServerEvents> = new Proxy(this as any, serverEventsProxy)
+  readonly #senders: Readonly<ServerEvents> = new Proxy(this as any, sendersProxy)
 
   readonly #debug = debug.bind(this)
 
@@ -116,15 +104,6 @@ export class IpcClientController<
   }
 
   /**
-   * The proxy object for the `on()` method.
-   *
-   * Usage: `IpcClientController.clientEvents.[ClientEvent] = [listener]`
-   */
-  get clientEvents() {
-    return this.#clientEvents
-  }
-
-  /**
    * The proxy object for the `invoke()` method.
    *
    * Usage: `IpcClientController.functions.[Function](...args)`
@@ -136,10 +115,10 @@ export class IpcClientController<
   /**
    * The proxy object for the `send()` method.
    *
-   * Usage: `IpcClientController.serverEvents.[ServerEvent](...args)`
+   * Usage: `IpcClientController.senders.[ServerEvent](...args)`
    */
-  get serverEvents() {
-    return this.#serverEvents
+  get senders() {
+    return this.#senders
   }
 
   get listeners() {

@@ -21,16 +21,16 @@ async function createBrowserWindow() {
 async function runTest() {
   const wins: Electron.BrowserWindow[] = []
   wins.push(await createBrowserWindow())
-  server.clientEvents.say('electron-ipc-flow-1')
+  server.senders.say('electron-ipc-flow-1')
   wins.push(await createBrowserWindow())
-  server.clientEvents.say('electron-ipc-flow-2')
+  server.senders.say('electron-ipc-flow-2')
   await sleep(1)
   server.webContentsGetter = () => [wins[1].webContents]
-  server.clientEvents.say('electron-ipc-flow-3')
+  server.senders.say('electron-ipc-flow-3')
   await sleep(1)
   server.webContentsGetter = undefined
   await sleep(1)
-  server.clientEvents.say('electron-ipc-flow-4')
+  server.senders.say('electron-ipc-flow-4')
   await sleep(1000)
   const body1 = await getWebContentsBody(wins[0].webContents)
   const body2 = await getWebContentsBody(wins[1].webContents)

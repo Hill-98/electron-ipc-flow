@@ -30,15 +30,6 @@ export type TrustHandlerFunc = {
 
 export type WebContentsGetterFunc = () => Promise<Electron.WebContents[]> | Electron.WebContents[]
 
-const clientEventsProxy: ProxyHandler<IpcServerController> = {
-  get(target, p) {
-    if (typeof p === 'string') {
-      return target.send.bind(target, p)
-    }
-    return undefined
-  },
-}
-
 const functionsProxy: ProxyHandler<IpcServerController> = {
   set(target, p, newValue) {
     if (typeof p === 'string') {
@@ -49,13 +40,12 @@ const functionsProxy: ProxyHandler<IpcServerController> = {
   },
 }
 
-const serverEventsProxy: ProxyHandler<IpcServerController> = {
-  set(target, p, newValue) {
+const sendersProxy: ProxyHandler<IpcServerController> = {
+  get(target, p) {
     if (typeof p === 'string') {
-      target.on(p, newValue)
-      return true
+      return target.send.bind(target, p)
     }
-    return false
+    return undefined
   },
 }
 
@@ -112,11 +102,9 @@ export class IpcServerController<
 
   readonly #name: string = ''
 
-  readonly #clientEvents: Readonly<ClientEvents> = new Proxy(this as any, clientEventsProxy)
-
   readonly #functions: Functions = new Proxy(this as any, functionsProxy)
 
-  readonly #serverEvents: MainEventListeners<ServerEvents> = new Proxy(this as any, serverEventsProxy)
+  readonly #senders: Readonly<ClientEvents> = new Proxy(this as any, sendersProxy)
 
   readonly #debug = debug.bind(this)
 
@@ -150,15 +138,6 @@ export class IpcServerController<
   }
 
   /**
-   * The proxy object for the `send()` method.
-   *
-   * Usage: `IpcClientController.clientEvents.[ClientEvent](...args)`
-   */
-  get clientEvents() {
-    return this.#clientEvents
-  }
-
-  /**
    * The proxy object for the `handle()` method.
    *
    * Usage: `IpcClientController.functions.[Function] = [handler]`
@@ -168,12 +147,12 @@ export class IpcServerController<
   }
 
   /**
-   * The proxy object for the `on()` method.
+   * The proxy object for the `send()` method.
    *
-   * Usage: `IpcClientController.serverEvents.[ServerEvent] = [listener]`
+   * Usage: `IpcClientController.senders.[ClientEvent](...args)`
    */
-  get serverEvents() {
-    return this.#serverEvents
+  get senders() {
+    return this.#senders
   }
 
   get handlers() {

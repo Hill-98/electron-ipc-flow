@@ -1,6 +1,6 @@
 {
   "name": "electron-ipc-flow",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "Fluently and type-safely write IPC for Electron",
   "keywords": [
     "electron",
@@ -23,7 +23,7 @@
   "author": "Zhong Lufan <lufanzhong@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "prepublish": "npm run check && npm run test && npm run build",
+    "prepublishOnly": "npm run check && npm run test && npm run build",
     "build": "vite build && vite build --mode preload && dts-bundle-generator --no-banner --no-check -o ./dist/index.d.ts ./src/index.ts",
     "check": "biome check && tsc --noEmit",
     "test": "node --test",

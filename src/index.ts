@@ -11,7 +11,10 @@ export interface InitOptions {
    */
   autoRegister?: boolean
   /**
-   * If the value is greater than 0, use `contextBridge.exposeInIsolatedWorld` to expose the global object in isolated world.
+   * If the value is greater than 0, use `contextBridge.exposeInIsolatedWorld` to
+   * expose the global object in isolated world.
+   *
+   * require Electron 22+
    */
   isolatedWorldId?: number
 }

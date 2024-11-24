@@ -435,7 +435,7 @@ export class IpcServerController<
       if (listener) {
         this.#debug('remove global event listener', null, event, 's')
 
-        IpcServerController.IpcMain.off(channel, listener)
+        IpcServerController.IpcMain.removeListener(channel, listener)
         this.#ipcMainEventListeners.delete(event)
       }
       this.#eventsListeners.delete(event)

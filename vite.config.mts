@@ -19,7 +19,7 @@ export default defineConfig((config) => {
         external: ['electron', 'electron/renderer'],
       },
       reportCompressedSize: false,
-      target: ['chrome100', 'node16'], // electron 18
+      target: ['chrome89', 'node14'], // electron 12
     },
   } satisfies UserConfig
 })

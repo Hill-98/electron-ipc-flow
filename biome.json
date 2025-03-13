@@ -1,13 +1,14 @@
 {
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
   "vcs": {
-    "enabled": false,
+    "enabled": true,
     "clientKind": "git",
-    "useIgnoreFile": true
+    "useIgnoreFile": true,
+    "defaultBranch": "main"
   },
   "files": {
     "ignoreUnknown": false,
-    "ignore": ["dist/**", "./package.json", "./tsconfig.json"]
+    "ignore": ["package.json", "tsconfig.json"]
   },
   "formatter": {
     "enabled": true,

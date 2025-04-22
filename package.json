@@ -11,9 +11,20 @@
   "files": [
     "./dist"
   ],
-  "main": "./dist/index.js",
-  "module": "./dist/index.mjs",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./preload": {
+      "default": "./dist/preload.cjs"
+    }
+  },
   "homepage": "https://github.com/Hill-98/electron-ipc-flow",
   "repository": {
     "type": "git",
@@ -34,17 +45,14 @@
     "@types/node": "^20.0.0",
     "callsites": "^4.2.0",
     "dts-bundle-generator": "^9.5.1",
-    "electron": "^33.0.0",
+    "electron": "^35.0.0",
     "husky": "^9.1.6",
     "is-promise": "^4.0.0",
     "serialize-error": "^12.0.0",
-    "typescript": "^5.6.3",
-    "vite": "^6.0.7"
+    "typescript": "~5.8.3",
+    "vite": "^6.2.6"
   },
   "peerDependencies": {
     "electron": ">= 12.0.0"
-  },
-  "volta": {
-    "node": "22.13.0"
   }
 }

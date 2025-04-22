@@ -13,6 +13,6 @@ export default defineConfig(({ mode }) => ({
       external: ['electron', 'electron/renderer'],
     },
     reportCompressedSize: false,
-    target: ['chrome89', 'node14'], // electron 12
+    target: ['chrome108', 'node16'], // electron 12
   },
 }))

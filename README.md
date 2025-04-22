@@ -31,19 +31,17 @@ import { server } from './hello.ts'
 
 IpcServerController.IpcMain = ipcMain
 
-// server.functions is proxy object
-server.functions.say = (who) => `Hello ${who}!`
-// server.handle('say', (who) => `Hello ${who}!`)
+server.handle('say', (who) => `Hello ${who}!`)
 
 // hello.ts
-import { IpcClientController, IpcServerController } from 'electron-ipc-flow'
+import { createIpcClient, createIpcServer } from 'electron-ipc-flow'
 
 type Functions = {
   say(who: string): string
 }
 
-export const client = new IpcClientController<Functions>('hello')
-export const server = new IpcServerController<Functions>('hello')
+export const client = createIpcClient<Functions>('hello')
+export const server = createIpcServer<Functions>('hello')
 
 // preload.ts
 import { contextBridge, ipcRenderer } from 'electron/renderer'
@@ -59,8 +57,8 @@ client.register()
 // renderer.ts
 import { client } from './hello.ts'
 
-// client.functions is proxy object
-console.log(await client.functions.say('World')) // Hello World!
+// client.$ is proxy method
+console.log(await client.$say('World')) // Hello World!
 // console.log(await client.invoke('say', 'World')) // Hello World!
 ```
 
@@ -79,14 +77,14 @@ server.on('say', (e, who) => {
 })
 
 // hello.ts
-import { IpcClientController, IpcServerController } from 'electron-ipc-flow'
+import { createIpcClient, createIpcServer } from 'electron-ipc-flow'
 
 type ServerEvents = {
   say(who: string): void
 }
 
-export const client = new IpcClientController<any, any, ServerEvents>('hello')
-export const server = new IpcServerController<any, any, ServerEvents>('hello')
+export const client = createIpcClient<any, any, ServerEvents>('hello')
+export const server = createIpcServer<any, any, ServerEvents>('hello')
 
 // preload.ts
 import { contextBridge, ipcRenderer } from 'electron/renderer'
@@ -114,14 +112,14 @@ IpcServerController.WebContentsGetter = () => BrowserWindow.getAllWindows().map(
 server.send('say', 'World')
 
 // hello.ts
-import { IpcClientController, IpcServerController } from 'electron-ipc-flow'
+import { createIpcClient, createIpcServer } from 'electron-ipc-flow'
 
 type ClientEvents = {
     say(who: string): void
 }
 
-export const client = new IpcClientController<any, ClientEvents, any>('hello')
-export const server = new IpcServerController<any, ClientEvents, any>('hello')
+export const client = createIpcClient<any, ClientEvents, any>('hello')
+export const server = createIpcServer<any, ClientEvents, any>('hello')
 
 // preload.ts
 import { contextBridge, ipcRenderer } from 'electron/renderer'
@@ -147,19 +145,19 @@ If you don't want to use TypeScript, you can use JSDoc to get type support:
  * @property {(who: string) => string} say
  */
 
-/** @type {IpcClientController<Functions>} */
-const controller = new IpcClientController('hello')
+/** @type {IpcClientController<Functions> & IpcClientControllerProxy<Functions>} */
+const controller = createIpcClient('hello')
 ```
 
 > Some editors may not be able to handle it, VSCode will work.
 
 ### Not using bundler
 
-If you don't want to use bundler, or don't need to do anything else in the preload script, you can use this preload script: [`node_modules/electron-ipc-flow/dist/preload.js`](https://unpkg.com/electron-ipc-flow/dist/preload.js).
+If you don't want to use bundler, or don't need to do anything else in the preload script, you can use this preload script: [`node_modules/electron-ipc-flow/dist/preload.cjs`](https://unpkg.com/electron-ipc-flow/dist/preload.cjs).
 
 Then you can import it in the renderer like this:
 ```javascript
-import { IpcClientController } from './node_modules/electron-ipc-flow/dist/index.mjs'
+import { createIpcClient } from './node_modules/electron-ipc-flow/dist/index.js'
 ```
 
 ## API

@@ -11,7 +11,7 @@ async function createBrowserWindow() {
     height: 600,
     alwaysOnTop: true,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, 'preload.cjs'),
       nodeIntegrationInSubFrames: true,
     },
   })

@@ -13,7 +13,7 @@ async function createBrowserWindow() {
     height: 600,
     alwaysOnTop: true,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, 'preload.cjs'),
     },
   })
   await win.loadFile(path.resolve(__dirname, 'index.html'))

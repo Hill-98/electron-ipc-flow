@@ -1,4 +1,4 @@
-import { IpcClientController, IpcServerController } from '../../src/index.js'
+import { createIpcClient, createIpcServer } from '../../src/index.js'
 
 type Functions = {
   hey(who: string): Promise<string>
@@ -12,5 +12,6 @@ type Events = {
   hello(who: string): void
 }
 
-export const client = new IpcClientController<Functions, any, Events>('controller')
-export const server = new IpcServerController<Functions, any, Events>('controller')
+export const client = createIpcClient<Functions, any, Events>('controller')
+
+export const server = createIpcServer<Functions, any, Events>('controller')

@@ -98,7 +98,7 @@ async function buildTest(dir) {
 async function runTest(dir) {
   const packageJson = {
     name: 'electron-ipc-flow-test',
-    main: 'main.js',
+    main: 'main.cjs',
   }
   await writeFile(join(dir, 'package.json'), JSON.stringify(packageJson))
   return new Promise((resolve, reject) => {

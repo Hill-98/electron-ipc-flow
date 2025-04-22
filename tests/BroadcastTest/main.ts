@@ -11,7 +11,7 @@ async function createBrowserWindow() {
     height: 600,
     alwaysOnTop: true,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, 'preload.cjs'),
     },
   })
   await win.loadFile(path.resolve(__dirname, 'index.html'))
@@ -21,16 +21,16 @@ async function createBrowserWindow() {
 async function runTest() {
   const wins: Electron.BrowserWindow[] = []
   wins.push(await createBrowserWindow())
-  server.senders.say('electron-ipc-flow-1')
+  server.send('say', 'electron-ipc-flow-1')
   wins.push(await createBrowserWindow())
-  server.senders.say('electron-ipc-flow-2')
+  server.send('say', 'electron-ipc-flow-2')
   await sleep(1)
   server.webContentsGetter = () => [wins[1].webContents]
-  server.senders.say('electron-ipc-flow-3')
+  server.send('say', 'electron-ipc-flow-3')
   await sleep(1)
   server.webContentsGetter = undefined
   await sleep(1)
-  server.senders.say('electron-ipc-flow-4')
+  server.send('say', 'electron-ipc-flow-4')
   await sleep(1000)
   const body1 = await getWebContentsBody(wins[0].webContents)
   const body2 = await getWebContentsBody(wins[1].webContents)

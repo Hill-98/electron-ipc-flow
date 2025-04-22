@@ -1,4 +1,4 @@
-import type { AnyFunction, FunctionsObj, InvokeReturnObject, IpcEventListener, StringKey } from './common.ts'
+import type { AnyFunction, FunctionProperties, InvokeReturnObject, IpcEventListener } from './common.ts'
 import { ErrorHandler, InvokeReturnStatus, assertIsNull, channelGenerator, debug } from './common.ts'
 
 declare global {
@@ -18,56 +18,31 @@ declare global {
   }
 }
 
+export type ClientFunctionReturnType<T extends AnyFunction> = Promise<Awaited<ReturnType<T>>>
+
 export type RendererEventListener<T extends AnyFunction = AnyFunction> = IpcEventListener<Electron.IpcRendererEvent, T>
 
-export type RendererEventListeners<T extends FunctionsObj<T>> = {
-  [P in keyof T]: RendererEventListener<T[P]>
+export type RendererEventListeners<T> = {
+  [P in keyof T]: T[P] extends AnyFunction ? RendererEventListener<T[P]> : never
 }
 
-export type ClientFunctionsProxy<T extends FunctionsObj<T>> = {
-  readonly [P in keyof T]: (...args: Parameters<T[P]>) => Promise<Awaited<ReturnType<T[P]>>>
+export type IpcClientControllerProxy<T> = {
+  [K in FunctionProperties<T> as `\$${K}`]: T[K] extends AnyFunction
+    ? (...args: Parameters<T[K]>) => ClientFunctionReturnType<T[K]>
+    : never
 }
 
 const IpcClientControllerRegistered = new Set<string>()
 
-const functionsProxy: ProxyHandler<IpcClientController> = {
-  get(target, p) {
-    if (typeof p === 'string') {
-      return target.invoke.bind(target, p)
-    }
-    return undefined
-  },
-}
-
-const sendersProxy: ProxyHandler<IpcClientController> = {
-  get(target, p) {
-    if (typeof p === 'string') {
-      return target.send.bind(target, p)
-    }
-    return undefined
-  },
-}
-
-// noinspection JSUnusedGlobalSymbols
 /**
  * Controller used in the renderer process
- *
- * The `Functions` generic defines the constraints for the functions that can be invoked using the invoke() method.
- *
- * The `ClientEvents` generic defines the constraints for the events that can be listened to using `on()`, `once()`, and `off()`.
- *
- * The `ServerEvents` generic defines the constraints for the events that can be sent using the `send()` method.
  */
 export class IpcClientController<
-  Functions extends FunctionsObj<Functions> = any,
-  ClientEvents extends FunctionsObj<ClientEvents> = any,
-  ServerEvents extends FunctionsObj<ServerEvents> = any,
+  Functions extends Record<any, any>,
+  ClientEvents extends Record<any, any>,
+  ServerEvents extends Record<any, any>,
 > {
   readonly #name: string = ''
-
-  readonly #functions: ClientFunctionsProxy<Functions> = new Proxy(this as any, functionsProxy)
-
-  readonly #senders: Readonly<ServerEvents> = new Proxy(this as any, sendersProxy)
 
   readonly #debug = debug.bind(this)
 
@@ -75,18 +50,14 @@ export class IpcClientController<
 
   readonly #eventsListeners = new Map<string, { listener: RendererEventListener; once: boolean }[]>()
 
-  #listeners?: Partial<RendererEventListeners<ClientEvents>>
-
   /**
    * @param name {string} Controller name
-   * @param listeners {Partial<RendererEventListeners<ClientEvents>>=} {@link listeners}
    */
-  constructor(name: string, listeners?: Partial<RendererEventListeners<ClientEvents>>) {
+  constructor(name: string) {
     if (name.trim() === '') {
       throw new SyntaxError('IpcClientController: "name" cannot be an empty string.')
     }
     this.#name = name
-    this.listeners = listeners
 
     const g = typeof globalThis === 'undefined' ? window : globalThis
     // 调用 preloadInit 时 autoRegister 参数为 true 时可用
@@ -103,58 +74,7 @@ export class IpcClientController<
     return this.#name
   }
 
-  /**
-   * The proxy object for the `invoke()` method.
-   *
-   * Usage: `IpcClientController.functions.[Function](...args)`
-   */
-  get functions() {
-    return this.#functions
-  }
-
-  /**
-   * The proxy object for the `send()` method.
-   *
-   * Usage: `IpcClientController.senders.[ServerEvent](...args)`
-   */
-  get senders() {
-    return this.#senders
-  }
-
-  get listeners() {
-    return this.#listeners
-  }
-
-  /**
-   * Use the `on()` to set all properties of an object as event listeners, with the
-   * property names being used as event names.
-   *
-   * If the value is set to `undefined` or if the property has been set previously, the
-   * existing event listener will be removed using `off()` first.
-   *
-   * @see {on}
-   * @see {off}
-   */
-  set listeners(value: Partial<RendererEventListeners<ClientEvents>> | undefined) {
-    // noinspection DuplicatedCode
-    if (typeof this.#listeners === 'object') {
-      for (const event in this.#listeners) {
-        if (this.#listeners[event]) {
-          this.off(event, this.#listeners[event])
-        }
-      }
-    }
-    this.#listeners = value
-    if (typeof this.#listeners === 'object') {
-      for (const event in this.#listeners) {
-        if (this.#listeners[event]) {
-          this.on(event, this.#listeners[event])
-        }
-      }
-    }
-  }
-
-  #addEventListener(event: StringKey<ClientEvents>, listener: AnyFunction, once = false) {
+  #addEventListener(event: FunctionProperties<ClientEvents>, listener: AnyFunction, once = false) {
     if (!this.#ipcRendererEventListeners.has(event)) {
       this.#debug('add global event listener', null, event, 'c')
 
@@ -175,7 +95,11 @@ export class IpcClientController<
     this.#eventsListeners.set(event, listeners)
   }
 
-  #ipcRendererEventListener(event: StringKey<ClientEvents>, eventObj: Electron.IpcRendererEvent, ...args: any) {
+  #ipcRendererEventListener(
+    event: FunctionProperties<ClientEvents>,
+    eventObj: Electron.IpcRendererEvent,
+    ...args: any
+  ) {
     this.#debug('received', { args }, event, 'c')
 
     const listeners = this.#eventsListeners.get(event) ?? []
@@ -195,10 +119,10 @@ export class IpcClientController<
   /**
    * Use `ipcRenderer.invoke()` to call the function defined by `IpcServerController.handle()`.
    */
-  async invoke<K extends StringKey<Functions>>(
+  async invoke<K extends FunctionProperties<Functions>>(
     name: K,
     ...args: Parameters<Functions[K]>
-  ): Promise<Awaited<ReturnType<Functions[K]>>> {
+  ): ClientFunctionReturnType<Functions[K]> {
     this.#debug('invoke', { args }, name, 'i')
 
     const result = await IpcClientController.#getGlobalIpcController().invoke(this.name, name, ...args)
@@ -212,7 +136,7 @@ export class IpcClientController<
     return result.value
   }
 
-  postMessage<K extends StringKey<ServerEvents>>(event: K, message: any, transfer?: MessagePort[]) {
+  postMessage<K extends FunctionProperties<ServerEvents>>(event: K, message: any, transfer?: MessagePort[]) {
     this.#debug('postMessage', { message }, event, 's')
 
     globalThis.postMessage(
@@ -233,7 +157,7 @@ export class IpcClientController<
    * If the `listener` parameter is not provided, all listeners for
    * the corresponding event will be removed.
    */
-  off<K extends StringKey<ClientEvents>>(event: K, listener?: RendererEventListener<ClientEvents[K]>) {
+  off<K extends FunctionProperties<ClientEvents>>(event: K, listener?: RendererEventListener<ClientEvents[K]>) {
     if (!this.#ipcRendererEventListeners.has(event)) {
       return
     }
@@ -255,7 +179,7 @@ export class IpcClientController<
    * Adds a specific client event listener, where the first parameter of
    * the listener is of type `Electron.IpcRendererEvent`.
    */
-  on<K extends StringKey<ClientEvents>>(event: K, listener: RendererEventListener<ClientEvents[K]>) {
+  on<K extends FunctionProperties<ClientEvents>>(event: K, listener: RendererEventListener<ClientEvents[K]>) {
     this.#addEventListener(event, listener)
   }
 
@@ -264,14 +188,14 @@ export class IpcClientController<
    *
    * @see {on}
    */
-  once<K extends StringKey<ClientEvents>>(event: K, listener: RendererEventListener<ClientEvents[K]>) {
+  once<K extends FunctionProperties<ClientEvents>>(event: K, listener: RendererEventListener<ClientEvents[K]>) {
     this.#addEventListener(event, listener, true)
   }
 
   /**
    * Uses `ipcRenderer.send()` to send to the server event listeners added with `IpcServerController.on()`.
    */
-  send<K extends StringKey<ServerEvents>>(event: K, ...args: Parameters<ServerEvents[K]>) {
+  send<K extends FunctionProperties<ServerEvents>>(event: K, ...args: Parameters<ServerEvents[K]>) {
     this.#debug('send', { args }, event, 's')
 
     IpcClientController.#getGlobalIpcController().send(this.name, event, ...args)
@@ -300,6 +224,25 @@ export class IpcClientController<
     )
     return global.$IpcClientController
   }
+}
+
+export function createIpcClient<
+  Functions extends Record<any, any> = any,
+  ClientEvents extends Record<any, any> = any,
+  ServerEvents extends Record<any, any> = any,
+>(
+  ...args: ConstructorParameters<typeof IpcClientController>
+): IpcClientController<Functions, ClientEvents, ServerEvents> & IpcClientControllerProxy<Functions> {
+  const controller = new IpcClientController<Functions, ClientEvents, ServerEvents>(...args)
+  return new Proxy(controller, {
+    get(target, p, receiver): any {
+      if (typeof p === 'string' && p.startsWith('$')) {
+        return target.invoke.bind(target, p.substring(1) as any)
+      }
+      const result = Reflect.get(target, p, receiver)
+      return typeof result === 'function' ? result.bind(target) : result
+    },
+  }) as any
 }
 
 export function preloadInit(ipcRenderer: Electron.IpcRenderer, autoRegister: boolean) {

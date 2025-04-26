@@ -1,12 +1,18 @@
+import { rmSync as rm } from 'node:fs'
+import { join } from 'node:path'
 import { defineConfig } from 'vite'
+import dts from 'vite-plugin-dts'
 
-export default defineConfig(({ mode }) => ({
+process.on('exit', () => {
+  rm(join(import.meta.dirname, 'dist/preload.js'))
+  rm(join(import.meta.dirname, 'dist/preload.d.ts'))
+})
+
+export default defineConfig({
   build: {
-    emptyOutDir: mode !== 'preload',
     lib: {
-      entry: mode === 'preload' ? 'src/preload.ts' : 'src/index.ts',
-      fileName: mode === 'preload' ? 'preload' : 'index',
-      formats: mode === 'preload' ? ['cjs'] : ['es', 'cjs'],
+      entry: ['src/preload.ts', 'src/index.ts'],
+      formats: ['es', 'cjs'],
     },
     minify: false,
     rollupOptions: {
@@ -15,4 +21,5 @@ export default defineConfig(({ mode }) => ({
     reportCompressedSize: false,
     target: ['chrome108', 'node16'], // electron 12
   },
-}))
+  plugins: [dts({ rollupTypes: true })],
+})

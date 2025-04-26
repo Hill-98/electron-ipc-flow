@@ -35,7 +35,7 @@
   "license": "MIT",
   "scripts": {
     "prepublishOnly": "npm run check && npm run test && npm run build",
-    "build": "vite build && vite build --mode preload && dts-bundle-generator --no-banner --no-check -o ./dist/index.d.ts ./src/index.ts",
+    "build": "vite build",
     "check": "biome check && tsc --noEmit",
     "test": "node --test",
     "prepare": "husky"
@@ -44,13 +44,13 @@
     "@biomejs/biome": "1.9.4",
     "@types/node": "^20.0.0",
     "callsites": "^4.2.0",
-    "dts-bundle-generator": "^9.5.1",
     "electron": "^35.0.0",
     "husky": "^9.1.6",
     "is-promise": "^4.0.0",
     "serialize-error": "^12.0.0",
     "typescript": "~5.8.3",
-    "vite": "^6.2.6"
+    "vite": "^6.2.6",
+    "vite-plugin-dts": "^4.5.3"
   },
   "peerDependencies": {
     "electron": ">= 22.0.0"

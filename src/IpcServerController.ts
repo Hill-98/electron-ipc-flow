@@ -86,14 +86,12 @@ export class IpcServerController<
 
   /**
    * @param name {string} Controller name
-   * @param handlers {Partial<Functions>=} {@link handlers}
    */
-  constructor(name: string, handlers?: Partial<Functions>) {
+  constructor(name: string) {
     if (name.trim() === '') {
       throw new SyntaxError('IpcServerController: "name" cannot be an empty string.')
     }
     this.#name = name
-    this.handlers = handlers
   }
 
   /**

@@ -1,6 +1,6 @@
 import isPromise from 'is-promise'
 import type { AnyFunction, FunctionProperties, InvokeReturnObject, IpcEventListener } from './common.ts'
-import { ErrorHandler, InvokeReturnStatus, assertIsNull, channelGenerator, debug } from './common.ts'
+import { ErrorHandler, InvokeReturnStatus, channelGenerator, debug } from './common.ts'
 
 export type MainInvokeHandler<T extends AnyFunction> = (
   event: Electron.IpcMainInvokeEvent,
@@ -56,9 +56,19 @@ export class IpcServerController<
   static WebContentsGetter: WebContentsGetterFunc | undefined
 
   /**
-   * `IpcMain` exported by the `electron` package, which must be set before using the controller.
+   * `Electron.IpcMain` used by all IpcServerController instances.
+   *
+   * @see {Electron.IpcMain}
    */
   static IpcMain: Electron.IpcMain | undefined
+
+  /**
+   * `Electron.IpcMain` used by this instance.
+   *
+   * @see {Electron.IpcMain}
+   * @see {IpcServerController.IpcMain}
+   */
+  ipcMain: Electron.IpcMain | undefined
 
   /**
    * This controller specific trust handler.
@@ -137,6 +147,14 @@ export class IpcServerController<
     }
   }
 
+  get #ipc() {
+    const value = this.ipcMain ?? IpcServerController.IpcMain
+    if (value === undefined) {
+      throw new TypeError('IpcServerController: static.IpcMain or instance.ipcMain must be set')
+    }
+    return value
+  }
+
   #clientEventChannel(event: string) {
     return channelGenerator(this.name, event, 'c')
   }
@@ -150,15 +168,13 @@ export class IpcServerController<
   }
 
   #addEventListener(event: FunctionProperties<ServerEvents>, listener: AnyFunction, once = false) {
-    IpcServerController.#ipcMainIsNull(IpcServerController.IpcMain)
-
     const channel = this.#serverEventChannel(event)
 
     if (!this.#ipcMainEventListeners.has(event)) {
       this.#debug('add global event listener', null, event, 's')
 
       const globalListener = this.#ipcMainEventListener.bind(this, event)
-      IpcServerController.IpcMain.on(channel, globalListener)
+      this.#ipc.on(channel, globalListener)
       this.#ipcMainEventListeners.set(event, globalListener)
     }
 
@@ -291,11 +307,9 @@ export class IpcServerController<
    * Uses `IpcMain.handle()` to add a specific function handler.
    */
   handle<K extends FunctionProperties<Functions>>(name: K, handler: Functions[K]) {
-    IpcServerController.#ipcMainIsNull(IpcServerController.IpcMain)
-
     this.#debug('add function handler', null, name, 'i')
 
-    IpcServerController.IpcMain.handle(this.#invokeChannel(name), this.#handle.bind(this, name, false, handler))
+    this.#ipc.handle(this.#invokeChannel(name), this.#handle.bind(this, name, false, handler))
   }
 
   /**
@@ -304,22 +318,18 @@ export class IpcServerController<
    * @see {handle}
    */
   handleWithEvent<K extends FunctionProperties<Functions>>(name: K, handler: MainInvokeHandler<Functions[K]>) {
-    IpcServerController.#ipcMainIsNull(IpcServerController.IpcMain)
-
     this.#debug('add function handler with event', null, name, 'i')
 
-    IpcServerController.IpcMain.handle(this.#invokeChannel(name), this.#handle.bind(this, name, true, handler))
+    this.#ipc.handle(this.#invokeChannel(name), this.#handle.bind(this, name, true, handler))
   }
 
   /**
    * Uses `IpcMain.removeHandler()` to remove a specific function handler.
    */
   removeHandler<K extends FunctionProperties<Functions>>(name: K) {
-    IpcServerController.#ipcMainIsNull(IpcServerController.IpcMain)
-
     this.#debug('remove function handler', null, name, 'i')
 
-    IpcServerController.IpcMain.removeHandler(this.#invokeChannel(name))
+    this.#ipc.removeHandler(this.#invokeChannel(name))
   }
 
   /**
@@ -333,8 +343,6 @@ export class IpcServerController<
       return
     }
 
-    IpcServerController.#ipcMainIsNull(IpcServerController.IpcMain)
-
     const channel = this.#serverEventChannel(event)
 
     this.#debug('remove event listener', null, event, 's')
@@ -347,7 +355,7 @@ export class IpcServerController<
       if (listener) {
         this.#debug('remove global event listener', null, event, 's')
 
-        IpcServerController.IpcMain.removeListener(channel, listener)
+        this.#ipc.removeListener(channel, listener)
         this.#ipcMainEventListeners.delete(event)
       }
       this.#eventsListeners.delete(event)
@@ -391,10 +399,6 @@ export class IpcServerController<
     ...args: Parameters<ClientEvents[K]>
   ) {
     this.#send(frameId, event, ...args)
-  }
-
-  static #ipcMainIsNull(v?: Electron.IpcMain | null): asserts v is Electron.IpcMain {
-    assertIsNull('IpcServerController.IpcMain is null.', v)
   }
 }
 

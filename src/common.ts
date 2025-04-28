@@ -16,7 +16,12 @@ export interface ErrorHandlerInterface {
 
 export type AnyFunction = (...args: any[]) => any
 
-export type IpcEventListener<T, K extends AnyFunction = AnyFunction> = (event: T, ...args: Parameters<K>) => void
+export type AnyObject = Record<any, any>
+
+export type IpcEventListener<T extends Electron.Event, K extends AnyFunction = AnyFunction> = (
+  event: T,
+  ...args: Parameters<K>
+) => void
 
 // biome-ignore lint/suspicious/noConstEnum: <explanation>
 export const enum InvokeReturnStatus {
@@ -33,7 +38,9 @@ export type FunctionPropertyNames<T> = {
   [K in keyof T]: T[K] extends AnyFunction ? K : never
 }[keyof T]
 
-export type FunctionProperties<T> = Extract<keyof Pick<T, FunctionPropertyNames<T>>, string>
+export type FunctionProperties<T> = T extends AnyObject
+  ? Extract<keyof Pick<T, FunctionPropertyNames<T>>, string>
+  : string
 
 export type ChannelTypes = 'c' | 'i' | 's'
 

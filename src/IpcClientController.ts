@@ -1,4 +1,4 @@
-import type { AnyFunction, FunctionProperties, InvokeReturnObject, IpcEventListener } from './common.ts'
+import type { AnyFunction, AnyObject, FunctionProperties, InvokeReturnObject, IpcEventListener } from './common.ts'
 import { ErrorHandler, InvokeReturnStatus, assertIsNull, channelGenerator, debug } from './common.ts'
 
 declare global {
@@ -26,7 +26,7 @@ export type RendererEventListeners<T> = {
   [P in keyof T]: T[P] extends AnyFunction ? RendererEventListener<T[P]> : never
 }
 
-export type IpcClientControllerProxy<T> = {
+export type IpcClientControllerProxy<T extends AnyObject> = {
   [K in FunctionProperties<T> as `\$${K}`]: T[K] extends AnyFunction
     ? (...args: Parameters<T[K]>) => ClientFunctionReturnType<T[K]>
     : never
@@ -38,9 +38,9 @@ const IpcClientControllerRegistered = new Set<string>()
  * Controller used in the renderer process
  */
 export class IpcClientController<
-  Functions extends Record<any, any>,
-  ClientEvents extends Record<any, any>,
-  ServerEvents extends Record<any, any>,
+  Functions extends AnyObject,
+  ClientEvents extends AnyObject,
+  ServerEvents extends AnyObject,
 > {
   readonly #name: string = ''
 
@@ -227,9 +227,9 @@ export class IpcClientController<
 }
 
 export function createIpcClient<
-  Functions extends Record<any, any> = any,
-  ClientEvents extends Record<any, any> = any,
-  ServerEvents extends Record<any, any> = any,
+  Functions extends AnyObject = any,
+  ClientEvents extends AnyObject = any,
+  ServerEvents extends AnyObject = any,
 >(
   ...args: ConstructorParameters<typeof IpcClientController>
 ): IpcClientController<Functions, ClientEvents, ServerEvents> & IpcClientControllerProxy<Functions> {

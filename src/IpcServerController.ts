@@ -1,5 +1,5 @@
 import isPromise from 'is-promise'
-import type { AnyFunction, FunctionProperties, InvokeReturnObject, IpcEventListener } from './common.ts'
+import type { AnyFunction, AnyObject, FunctionProperties, InvokeReturnObject, IpcEventListener } from './common.ts'
 import { ErrorHandler, InvokeReturnStatus, channelGenerator, debug } from './common.ts'
 
 export type MainInvokeHandler<T extends AnyFunction> = (
@@ -13,16 +13,16 @@ export type MainEventListeners<T> = {
   [P in keyof T]: T[P] extends AnyFunction ? MainEventListener<T[P]> : never
 }
 
-export type TrustHandlerFunc = {
+export type TrustHandlerFunc<Controller extends IpcServerController<any, any, any>> = {
   (
-    controller: IpcServerController<any, any, any>,
-    name: string,
+    controller: Controller,
+    name: Parameters<Controller['on']>[0],
     type: 'event',
-    event: Electron.IpcMainInvokeEvent,
+    event: Electron.IpcMainEvent,
   ): Promise<boolean> | boolean
   (
-    controller: IpcServerController<any, any, any>,
-    name: string,
+    controller: Controller,
+    name: Parameters<Controller['handle']>[0],
     type: 'invoke',
     event: Electron.IpcMainInvokeEvent,
   ): Promise<boolean> | boolean
@@ -34,9 +34,9 @@ export type WebContentsGetterFunc = () => Promise<Electron.WebContents[]> | Elec
  * Controller used in the main process
  */
 export class IpcServerController<
-  Functions extends Record<any, any>,
-  ClientEvents extends Record<any, any>,
-  ServerEvents extends Record<any, any>,
+  Functions extends AnyObject,
+  ClientEvents extends AnyObject,
+  ServerEvents extends AnyObject,
 > {
   /**
    * `IpcServerController` calls the trust handler when it receives a call or event.
@@ -45,7 +45,7 @@ export class IpcServerController<
    *
    * @see {trustHandler}
    */
-  static TrustHandler: TrustHandlerFunc = () => true
+  static TrustHandler: TrustHandlerFunc<ReturnType<typeof createIpcServer>> = () => true
 
   /**
    * Used to specify which renderers the `IpcServerController.send` method sends events to.
@@ -75,7 +75,7 @@ export class IpcServerController<
    *
    * @see {TrustHandler}
    */
-  trustHandler: TrustHandlerFunc | undefined
+  trustHandler: TrustHandlerFunc<this> | undefined
 
   /**
    * This controller specific webContents getter.
@@ -155,6 +155,10 @@ export class IpcServerController<
     return value
   }
 
+  get #trustHandler() {
+    return this.trustHandler ?? IpcServerController.TrustHandler
+  }
+
   #clientEventChannel(event: string) {
     return channelGenerator(this.name, event, 'c')
   }
@@ -192,7 +196,7 @@ export class IpcServerController<
 
   async #ipcMainEventListener(event: FunctionProperties<ServerEvents>, eventObj: Electron.IpcMainEvent, ...args: any) {
     try {
-      const trust = (this.trustHandler ?? IpcServerController.TrustHandler)(this, event, 'event', eventObj)
+      const trust = this.#trustHandler(this, event, 'event', eventObj)
       if (trust === false || !(await trust)) {
         this.#debug('blocked', null, event, 's')
         return
@@ -234,7 +238,7 @@ export class IpcServerController<
   }
 
   async #handle(
-    name: string,
+    name: FunctionProperties<Functions>,
     passEvent: boolean,
     func: AnyFunction,
     event: Electron.IpcMainInvokeEvent,
@@ -243,7 +247,7 @@ export class IpcServerController<
     this.#debug('received', { args }, name, 'i')
 
     try {
-      const trust = (this.trustHandler ?? IpcServerController.TrustHandler)(this, name, 'invoke', event)
+      const trust = this.#trustHandler(this, name, 'invoke', event)
       if (trust === false || !(await trust)) {
         this.#debug('blocked', null, name, 'i')
         return {
@@ -403,9 +407,9 @@ export class IpcServerController<
 }
 
 export function createIpcServer<
-  Functions extends Record<any, any> = any,
-  ClientEvents extends Record<any, any> = any,
-  ServerEvents extends Record<any, any> = any,
+  Functions extends AnyObject = any,
+  ClientEvents extends AnyObject = any,
+  ServerEvents extends AnyObject = any,
 >(
   ...args: ConstructorParameters<typeof IpcServerController>
 ): IpcServerController<Functions, ClientEvents, ServerEvents> {

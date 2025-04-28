@@ -90,7 +90,7 @@ export class IpcServerController<
    */
   constructor(name: string, handlers?: Partial<Functions>) {
     if (name.trim() === '') {
-      throw new SyntaxError('IpcBroadcastController: "name" cannot be an empty string.')
+      throw new SyntaxError('IpcServerController: "name" cannot be an empty string.')
     }
     this.#name = name
     this.handlers = handlers

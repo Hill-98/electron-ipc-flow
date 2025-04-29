@@ -4,11 +4,13 @@ import { rm, writeFile } from 'node:fs/promises'
 import module from 'node:module'
 import { basename, join } from 'node:path'
 import { test } from 'node:test'
+import electron from 'electron'
 import { build } from 'vite'
 
 const __dirname = import.meta.dirname
 
-const ELECTRON_BIN = join(__dirname, '../node_modules/.bin/electron'.concat(process.platform === 'win32' ? '.cmd' : ''))
+/** @type {string} */
+const ELECTRON_BIN = electron
 
 /**
  * @param {string} dir
@@ -35,6 +37,7 @@ async function buildTest(dir) {
         formats: ['cjs'],
       },
       minify: false,
+      outDir: output,
       rollupOptions: {
         external: [
           ...module.builtinModules,
@@ -43,10 +46,8 @@ async function buildTest(dir) {
           'electron/renderer',
         ],
       },
-      outDir: output,
       reportCompressedSize: false,
       sourcemap: 'inline',
-      target: 'ESNext',
     },
   })
 
@@ -62,13 +63,12 @@ async function buildTest(dir) {
         formats: ['cjs'],
       },
       minify: false,
+      outDir: output,
       rollupOptions: {
         external: ['electron', 'electron/renderer'],
       },
-      outDir: output,
       reportCompressedSize: false,
       sourcemap: 'inline',
-      target: 'ESNext',
     },
   })
 
@@ -84,7 +84,7 @@ async function buildTest(dir) {
       outDir: output,
       reportCompressedSize: false,
       sourcemap: 'inline',
-      target: 'ESNext',
+      target: 'chrome108',
     },
   })
 

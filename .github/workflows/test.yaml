@@ -1,0 +1,31 @@
+name: test
+on:
+  push:
+    paths:
+      - '.github/workflows/test.yaml'
+      - 'src/**/*'
+      - 'tests/**/*'
+  pull_request:
+    paths:
+    - '.github/workflows/test.yaml'
+    - 'src/**/*'
+    - 'tests/**/*'
+jobs:
+  electron-test:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        version: [22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup NodeJS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - name: Install electron
+        run: npm install --save-dev electron@^${{ matrix.version }}.0.0
+      - name: Run test
+        run: npm run test

@@ -1,17 +1,22 @@
 import isPromise from 'is-promise'
-import type { AnyFunction, AnyObject, FunctionProperties, InvokeReturnObject, IpcEventListener } from './common.ts'
+import type {
+  AnyFunction,
+  AnyObject,
+  FunctionParameters,
+  FunctionProperties,
+  InvokeReturnObject,
+  IpcEventListener,
+} from './common.ts'
 import { ErrorHandler, InvokeReturnStatus, channelGenerator, debug } from './common.ts'
 
-export type MainInvokeHandler<T extends AnyFunction> = (
-  event: Electron.IpcMainInvokeEvent,
-  ...args: Parameters<T>
-) => ReturnType<T>
+// export type MainInvokeHandler<T extends AnyFunction> = (
+//   event: Electron.IpcMainInvokeEvent,
+//   ...args: FunctionParameters<T>
+// ) => ReturnType<T>
 
 export type MainEventListener<T extends AnyFunction = AnyFunction> = IpcEventListener<Electron.IpcMainEvent, T>
 
-export type MainEventListeners<T> = {
-  [P in keyof T]: T[P] extends AnyFunction ? MainEventListener<T[P]> : never
-}
+export type MainInvokeEventHandler<T extends AnyFunction> = IpcEventListener<Electron.IpcMainInvokeEvent, T>
 
 export type TrustHandlerFunc<Controller extends IpcServerController<any, any, any>> = {
   (
@@ -222,15 +227,19 @@ export class IpcServerController<
     }
   }
 
+  /**
+   * Why use a callback method? If getter is not a Promise, it can be call sync.
+   */
   #callWebContentsGetter(cb: (items: Electron.WebContents[]) => void) {
     try {
-      const getter = (this.webContentsGetter ?? IpcServerController.WebContentsGetter ?? (() => []))()
-      if (isPromise(getter)) {
-        getter.then(cb).catch((err) => {
+      const getter = this.webContentsGetter ?? IpcServerController.WebContentsGetter ?? (() => [])
+      const result = getter()
+      if (isPromise(result)) {
+        result.then(cb).catch((err) => {
           console.error('An error occurred in the webContents getter:', err)
         })
       } else {
-        cb(getter)
+        cb(result)
       }
     } catch (err) {
       console.error('An error occurred in the webContents getter:', err)
@@ -287,7 +296,7 @@ export class IpcServerController<
   #send<K extends FunctionProperties<ClientEvents>>(
     frameId: number | [number, number] | null,
     event: K,
-    ...args: Parameters<ClientEvents[K]>
+    ...args: FunctionParameters<ClientEvents[K]>
   ) {
     this.#callWebContentsGetter((items: Electron.WebContents[]) => {
       const channel = this.#clientEventChannel(event)
@@ -321,7 +330,7 @@ export class IpcServerController<
    *
    * @see {handle}
    */
-  handleWithEvent<K extends FunctionProperties<Functions>>(name: K, handler: MainInvokeHandler<Functions[K]>) {
+  handleWithEvent<K extends FunctionProperties<Functions>>(name: K, handler: MainInvokeEventHandler<Functions[K]>) {
     this.#debug('add function handler with event', null, name, 'i')
 
     this.#ipc.handle(this.#invokeChannel(name), this.#handle.bind(this, name, true, handler))
@@ -388,7 +397,7 @@ export class IpcServerController<
   /**
    * Uses `WebContents.send()` to send to the server event listeners added with `IpcClientController.on()`.
    */
-  send<K extends FunctionProperties<ClientEvents>>(event: K, ...args: Parameters<ClientEvents[K]>) {
+  send<K extends FunctionProperties<ClientEvents>>(event: K, ...args: FunctionParameters<ClientEvents[K]>) {
     this.#send(null, event, ...args)
   }
 
@@ -400,7 +409,7 @@ export class IpcServerController<
   sendToFrame<K extends FunctionProperties<ClientEvents>>(
     frameId: number | [number, number],
     event: K,
-    ...args: Parameters<ClientEvents[K]>
+    ...args: FunctionParameters<ClientEvents[K]>
   ) {
     this.#send(frameId, event, ...args)
   }

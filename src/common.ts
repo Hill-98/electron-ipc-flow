@@ -18,21 +18,11 @@ export type AnyFunction = (...args: any[]) => any
 
 export type AnyObject = Record<any, any>
 
-export type IpcEventListener<T extends Electron.Event, K extends AnyFunction = AnyFunction> = (
-  event: T,
-  ...args: Parameters<K>
-) => void
+export type ChannelTypes = 'c' | 'i' | 's'
 
-// biome-ignore lint/suspicious/noConstEnum: <explanation>
-export const enum InvokeReturnStatus {
-  error,
-  result,
-}
+export type ExactType<T, U> = [T] extends [U] ? ([U] extends [T] ? true : false) : false
 
-export interface InvokeReturnObject<T = any> {
-  status: InvokeReturnStatus
-  value: T
-}
+export type FunctionParameters<T> = T extends AnyFunction ? Parameters<T> : any[]
 
 export type FunctionPropertyNames<T> = {
   [K in keyof T]: T[K] extends AnyFunction ? K : never
@@ -42,7 +32,20 @@ export type FunctionProperties<T> = T extends AnyObject
   ? Extract<keyof Pick<T, FunctionPropertyNames<T>>, string>
   : string
 
-export type ChannelTypes = 'c' | 'i' | 's'
+export type IpcEventListener<T extends Electron.Event, K extends AnyFunction = AnyFunction> = (
+  event: T,
+  ...args: FunctionParameters<K>
+) => ExactType<T, Electron.IpcMainInvokeEvent> extends true ? ReturnType<K> : void
+
+export enum InvokeReturnStatus {
+  error,
+  result,
+}
+
+export interface InvokeReturnObject<T = any> {
+  status: InvokeReturnStatus
+  value: T
+}
 
 export const channelGenerator = (controller: string, event: string, type: ChannelTypes) =>
   `$electron-ipc-flow$||${type}||${controller}||${event}`

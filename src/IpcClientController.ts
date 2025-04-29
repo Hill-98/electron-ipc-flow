@@ -1,4 +1,11 @@
-import type { AnyFunction, AnyObject, FunctionProperties, InvokeReturnObject, IpcEventListener } from './common.ts'
+import type {
+  AnyFunction,
+  AnyObject,
+  FunctionParameters,
+  FunctionProperties,
+  InvokeReturnObject,
+  IpcEventListener,
+} from './common.ts'
 import { ErrorHandler, InvokeReturnStatus, assertIsNull, channelGenerator, debug } from './common.ts'
 
 declare global {
@@ -18,17 +25,13 @@ declare global {
   }
 }
 
-export type ClientFunctionReturnType<T extends AnyFunction> = Promise<Awaited<ReturnType<T>>>
+export type ClientFunctionReturnType<T extends AnyFunction = AnyFunction> = Promise<Awaited<ReturnType<T>>>
 
 export type RendererEventListener<T extends AnyFunction = AnyFunction> = IpcEventListener<Electron.IpcRendererEvent, T>
 
-export type RendererEventListeners<T> = {
-  [P in keyof T]: T[P] extends AnyFunction ? RendererEventListener<T[P]> : never
-}
-
 export type IpcClientControllerProxy<T extends AnyObject> = {
   [K in FunctionProperties<T> as `\$${K}`]: T[K] extends AnyFunction
-    ? (...args: Parameters<T[K]>) => ClientFunctionReturnType<T[K]>
+    ? (...args: FunctionParameters<T[K]>) => ClientFunctionReturnType<T[K]>
     : never
 }
 
@@ -74,7 +77,11 @@ export class IpcClientController<
     return this.#name
   }
 
-  #addEventListener(event: FunctionProperties<ClientEvents>, listener: AnyFunction, once = false) {
+  #addEventListener<K extends FunctionProperties<ClientEvents>>(
+    event: K,
+    listener: RendererEventListener<ClientEvents[K]>,
+    once = false,
+  ) {
     if (!this.#ipcRendererEventListeners.has(event)) {
       this.#debug('add global event listener', null, event, 'c')
 
@@ -121,7 +128,7 @@ export class IpcClientController<
    */
   async invoke<K extends FunctionProperties<Functions>>(
     name: K,
-    ...args: Parameters<Functions[K]>
+    ...args: FunctionParameters<Functions[K]>
   ): ClientFunctionReturnType<Functions[K]> {
     this.#debug('invoke', { args }, name, 'i')
 
@@ -195,7 +202,7 @@ export class IpcClientController<
   /**
    * Uses `ipcRenderer.send()` to send to the server event listeners added with `IpcServerController.on()`.
    */
-  send<K extends FunctionProperties<ServerEvents>>(event: K, ...args: Parameters<ServerEvents[K]>) {
+  send<K extends FunctionProperties<ServerEvents>>(event: K, ...args: FunctionParameters<ServerEvents[K]>) {
     this.#debug('send', { args }, event, 's')
 
     IpcClientController.#getGlobalIpcController().send(this.name, event, ...args)
@@ -235,11 +242,11 @@ export function createIpcClient<
 ): IpcClientController<Functions, ClientEvents, ServerEvents> & IpcClientControllerProxy<Functions> {
   const controller = new IpcClientController<Functions, ClientEvents, ServerEvents>(...args)
   return new Proxy(controller, {
-    get(target, p, receiver): any {
+    get(target, p): any {
       if (typeof p === 'string' && p.startsWith('$')) {
         return target.invoke.bind(target, p.substring(1) as any)
       }
-      const result = Reflect.get(target, p, receiver)
+      const result = Reflect.get(target, p)
       return typeof result === 'function' ? result.bind(target) : result
     },
   }) as any

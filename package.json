@@ -1,6 +1,6 @@
 {
   "name": "electron-ipc-flow",
-  "version": "5.0.1",
+  "version": "5.0.2",
   "description": "Fluently and type-safely write IPC for Electron",
   "keywords": [
     "electron",

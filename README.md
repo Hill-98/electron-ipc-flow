@@ -1,5 +1,9 @@
 # electron-ipc-flow
 
+[![npm](https://img.shields.io/npm/v/electron-ipc-flow)](https://www.npmjs.com/package/electron-ipc-flow)
+[![electron](https://img.shields.io/npm/dependency-version/electron-ipc-flow/dev/electron)](https://www.electronjs.org/)
+[![test](https://github.com/Hill-98/electron-ipc-flow/actions/workflows/test.yaml/badge.svg)](https://github.com/Hill-98/electron-ipc-flow/actions/workflows/test.yaml)
+
 Fluently and type-safely write IPC for [Electron](https://www.electronjs.org/).
 
 Just focus on the IPC handlers and calls, without any trivial matters; everything will happen as you envision.
@@ -166,7 +170,7 @@ You can check the definition file [`dist/index.d.ts`](https://unpkg.com/electron
 
 ## Debug
 
-> The internal `debug()` method uses the [callsites](https://www.npmjs.com/package/callsites) library to obtain the call stack, and callsites internally utilizes the [V8 stack trace API](https://v8.dev/docs/stack-trace-api).
+> The internal `debug()` method uses the [callsites](https://www.npmjs.com/package/callsites) library to get the call stack, and callsites internally uses the [V8 stack trace API](https://v8.dev/docs/stack-trace-api).
 
 You can set the environment variable `ELECTRON_IPC_FLOW_DEBUG` to `true` to enable debug mode. In debug mode, some data will be output to the console (verbose level).
 
@@ -174,7 +178,7 @@ You can set the environment variable `ELECTRON_IPC_FLOW_DEBUG` to `true` to enab
 
 **disable**: `process.env.ELECTRON_IPC_FLOW_DEBUG = 'false'` in `main.js` first line.
 
-**You should always disable debug mode on production release ! ! !**
+**You should always disable debug mode on a production release! ! !**
 
 ## Thanks
 

@@ -48,4 +48,4 @@ export function preloadInit(
 
 export { IpcClientController, createIpcClient } from './IpcClientController.js'
 export { IpcServerController, createIpcServer } from './IpcServerController.js'
-export { ErrorHandler } from './common.ts'
+export { channelGenerator, ErrorHandler } from './common.ts'

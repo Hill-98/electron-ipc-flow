@@ -35,7 +35,7 @@
   "license": "MIT",
   "scripts": {
     "prepublishOnly": "npm run check && npm run test && npm run build",
-    "build": "vite build",
+    "build": "node --experimental-strip-types build.ts",
     "check": "biome check && tsc --noEmit",
     "test": "node --test && tsc --noEmit",
     "prepare": "husky"

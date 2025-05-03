@@ -1,7 +1,7 @@
 # electron-ipc-flow
 
 [![npm](https://img.shields.io/npm/v/electron-ipc-flow)](https://www.npmjs.com/package/electron-ipc-flow)
-[![electron](https://img.shields.io/npm/dependency-version/electron-ipc-flow/dev/electron)](https://www.electronjs.org/)
+[![electron](https://img.shields.io/npm/dependency-version/electron-ipc-flow/peer/electron)](https://www.electronjs.org/)
 [![test](https://github.com/Hill-98/electron-ipc-flow/actions/workflows/test.yaml/badge.svg)](https://github.com/Hill-98/electron-ipc-flow/actions/workflows/test.yaml)
 
 Fluently and type-safely write IPC for [Electron](https://www.electronjs.org/).

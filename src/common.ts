@@ -37,13 +37,13 @@ export type IpcEventListener<T extends Electron.Event, K extends AnyFunction = A
   ...args: FunctionParameters<K>
 ) => ExactType<T, Electron.IpcMainInvokeEvent> extends true ? ReturnType<K> : void
 
-export enum InvokeReturnStatus {
-  error,
-  result,
+export enum InvokeReturnType {
+  error = 'error',
+  result = 'result',
 }
 
-export interface InvokeReturnObject<T = any> {
-  status: InvokeReturnStatus
+export interface InvokeReturnObject<T> {
+  type: InvokeReturnType
   value: T
 }
 

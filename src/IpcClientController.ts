@@ -6,7 +6,7 @@ import type {
   InvokeReturnObject,
   IpcEventListener,
 } from './common.ts'
-import { ErrorHandler, InvokeReturnStatus, assertIsNull, channelGenerator, debug } from './common.ts'
+import { ErrorHandler, InvokeReturnType, assertIsNull, channelGenerator, debug } from './common.ts'
 
 declare global {
   namespace globalThis {
@@ -14,7 +14,7 @@ declare global {
     var $IpcClientController: GlobalIpcClientController | undefined
 
     interface GlobalIpcClientController {
-      invoke(controllerName: string, name: string, ...args: any): Promise<InvokeReturnObject>
+      invoke(controllerName: string, name: string, ...args: any): Promise<InvokeReturnObject<any>>
 
       on(controllerName: string, event: string, listener: RendererEventListener): void
 
@@ -45,7 +45,7 @@ export class IpcClientController<
   ClientEvents extends AnyObject,
   ServerEvents extends AnyObject,
 > {
-  readonly #name: string = ''
+  readonly #name: string
 
   readonly #debug = debug.bind(this)
 
@@ -136,7 +136,7 @@ export class IpcClientController<
 
     this.#debug('received', result, name, 'i')
 
-    if (result.status === InvokeReturnStatus.error) {
+    if (result.type === InvokeReturnType.error) {
       throw ErrorHandler.deserialize(result.value)
     }
 

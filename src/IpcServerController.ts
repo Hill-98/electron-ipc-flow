@@ -7,12 +7,7 @@ import type {
   InvokeReturnObject,
   IpcEventListener,
 } from './common.ts'
-import { ErrorHandler, InvokeReturnStatus, channelGenerator, debug } from './common.ts'
-
-// export type MainInvokeHandler<T extends AnyFunction> = (
-//   event: Electron.IpcMainInvokeEvent,
-//   ...args: FunctionParameters<T>
-// ) => ReturnType<T>
+import { ErrorHandler, InvokeReturnType, channelGenerator, debug } from './common.ts'
 
 export type MainEventListener<T extends AnyFunction = AnyFunction> = IpcEventListener<Electron.IpcMainEvent, T>
 
@@ -89,7 +84,7 @@ export class IpcServerController<
    */
   webContentsGetter: WebContentsGetterFunc | undefined
 
-  readonly #name: string = ''
+  readonly #name: string
 
   readonly #debug = debug.bind(this)
 
@@ -252,7 +247,7 @@ export class IpcServerController<
     func: AnyFunction,
     event: Electron.IpcMainInvokeEvent,
     ...args: any
-  ): Promise<InvokeReturnObject> {
+  ): Promise<InvokeReturnObject<any>> {
     this.#debug('received', { args }, name, 'i')
 
     try {
@@ -260,14 +255,14 @@ export class IpcServerController<
       if (trust === false || !(await trust)) {
         this.#debug('blocked', null, name, 'i')
         return {
-          status: InvokeReturnStatus.error,
+          type: InvokeReturnType.error,
           value: ErrorHandler.serialize(new Error('Blocked by trust handler')),
         }
       }
     } catch (err) {
       console.error('An error occurred in the trust handler:', err)
       return {
-        status: InvokeReturnStatus.error,
+        type: InvokeReturnType.error,
         value: ErrorHandler.serialize(new Error('Blocked by trust handler')),
       }
     }
@@ -281,13 +276,13 @@ export class IpcServerController<
       this.#debug('send result', { value }, name, 'i')
 
       return {
-        status: InvokeReturnStatus.result,
+        type: InvokeReturnType.result,
         value,
       }
     } catch (err) {
       this.#debug('catch error', err, name, 'i')
       return {
-        status: InvokeReturnStatus.error,
+        type: InvokeReturnType.error,
         value: ErrorHandler.serialize(err),
       }
     }

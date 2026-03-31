@@ -1,6 +1,6 @@
 {
   "name": "electron-ipc-flow",
-  "version": "5.0.2",
+  "version": "6.0.0",
   "description": "Fluently and type-safely write IPC for Electron",
   "keywords": [
     "electron",
@@ -34,9 +34,9 @@
   "license": "MIT",
   "scripts": {
     "prepublishOnly": "npm run check && npm run test && npm run build",
-    "build": "node --experimental-strip-types build.ts",
+    "build": "node build.ts",
     "check": "biome check && tsc --noEmit",
-    "test": "node --test && tsc --noEmit",
+    "test": "node --test",
     "prepare": "husky"
   },
   "devDependencies": {

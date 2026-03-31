@@ -1,5 +1,5 @@
-import { preloadInit as InitIpcClientController } from './IpcClientController.js'
 import { isDebug } from './common.ts'
+import { preloadInit as InitIpcClientController } from './IpcClientController.js'
 
 export interface InitOptions {
   /**
@@ -46,6 +46,6 @@ export function preloadInit(
   }
 }
 
-export { IpcClientController, createIpcClient } from './IpcClientController.js'
-export { IpcServerController, createIpcServer } from './IpcServerController.js'
 export { channelGenerator, ErrorHandler } from './common.ts'
+export { createIpcClient, IpcClientController } from './IpcClientController.js'
+export { createIpcServer, IpcServerController } from './IpcServerController.js'

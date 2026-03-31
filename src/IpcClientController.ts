@@ -6,7 +6,7 @@ import type {
   InvokeReturnObject,
   IpcEventListener,
 } from './common.ts'
-import { ErrorHandler, InvokeReturnType, assertIsNull, channelGenerator, debug } from './common.ts'
+import { assertIsNull, channelGenerator, debug, ErrorHandler } from './common.ts'
 
 declare global {
   namespace globalThis {
@@ -136,7 +136,7 @@ export class IpcClientController<
 
     this.#debug('received', result, name, 'i')
 
-    if (result.type === InvokeReturnType.error) {
+    if (result.type === 'error') {
       throw ErrorHandler.deserialize(result.value)
     }
 

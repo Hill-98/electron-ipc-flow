@@ -7,7 +7,7 @@ import type {
   InvokeReturnObject,
   IpcEventListener,
 } from './common.ts'
-import { ErrorHandler, InvokeReturnType, channelGenerator, debug } from './common.ts'
+import { channelGenerator, debug, ErrorHandler } from './common.ts'
 
 export type MainEventListener<T extends AnyFunction = AnyFunction> = IpcEventListener<Electron.IpcMainEvent, T>
 
@@ -255,14 +255,14 @@ export class IpcServerController<
       if (trust === false || !(await trust)) {
         this.#debug('blocked', null, name, 'i')
         return {
-          type: InvokeReturnType.error,
+          type: 'error',
           value: ErrorHandler.serialize(new Error('Blocked by trust handler')),
         }
       }
     } catch (err) {
       console.error('An error occurred in the trust handler:', err)
       return {
-        type: InvokeReturnType.error,
+        type: 'error',
         value: ErrorHandler.serialize(new Error('Blocked by trust handler')),
       }
     }
@@ -276,13 +276,13 @@ export class IpcServerController<
       this.#debug('send result', { value }, name, 'i')
 
       return {
-        type: InvokeReturnType.result,
+        type: 'result',
         value,
       }
     } catch (err) {
       this.#debug('catch error', err, name, 'i')
       return {
-        type: InvokeReturnType.error,
+        type: 'error',
         value: ErrorHandler.serialize(err),
       }
     }

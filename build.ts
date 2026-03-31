@@ -6,7 +6,7 @@ await build({
   build: {
     lib: {
       entry: ['src/index.ts'],
-      formats: ['es', 'cjs'],
+      formats: ['es'],
     },
     minify: false,
     reportCompressedSize: false,

@@ -8,7 +8,7 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "ignore": ["package.json", "tsconfig.json"]
+    "includes": ["**", "!**/package.json", "!**/tsconfig.json"]
   },
   "formatter": {
     "enabled": true,
@@ -16,9 +16,7 @@
     "lineEnding": "lf",
     "lineWidth": 120
   },
-  "organizeImports": {
-    "enabled": true
-  },
+  "assist": { "actions": { "source": { "organizeImports": "on" } } },
   "linter": {
     "enabled": true,
     "rules": {

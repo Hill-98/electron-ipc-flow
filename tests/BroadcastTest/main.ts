@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import path from 'node:path'
-import { BrowserWindow, app } from 'electron'
+import { app, BrowserWindow } from 'electron'
 import { IpcServerController } from '../../src/index.js'
 import { getWebContentsBody, includeCount, sleep } from '../common.js'
 import { server } from './controller.js'

@@ -1,6 +1,8 @@
 import { build } from 'vite'
 import dts from 'vite-plugin-dts'
 
+const target = ['chrome128', 'node20']
+
 // main
 await build({
   build: {
@@ -10,7 +12,7 @@ await build({
     },
     minify: false,
     reportCompressedSize: false,
-    target: ['chrome128', 'node20'],
+    target,
   },
   plugins: [dts({ rollupTypes: true })],
 })
@@ -25,9 +27,9 @@ await build({
     },
     minify: false,
     reportCompressedSize: false,
-    rollupOptions: {
+    rolldownOptions: {
       external: ['electron/renderer'],
     },
-    target: ['chrome108', 'node16'], // electron 12
+    target,
   },
 })

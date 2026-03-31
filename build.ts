@@ -10,7 +10,7 @@ await build({
     },
     minify: false,
     reportCompressedSize: false,
-    target: ['chrome108', 'node16'], // electron 12
+    target: ['chrome128', 'node20'],
   },
   plugins: [dts({ rollupTypes: true })],
 })

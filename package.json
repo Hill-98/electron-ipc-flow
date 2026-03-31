@@ -53,6 +53,6 @@
     "vite-plugin-dts": "^4.5.3"
   },
   "peerDependencies": {
-    "electron": ">= 22.0.0"
+    "electron": ">= 32.0.0"
   }
 }

@@ -38,7 +38,7 @@ async function buildTest(dir) {
       },
       minify: false,
       outDir: output,
-      rollupOptions: {
+      rolldownOptions: {
         external: [
           ...module.builtinModules,
           ...module.builtinModules.map((m) => `node:${m}`),
@@ -64,8 +64,14 @@ async function buildTest(dir) {
       },
       minify: false,
       outDir: output,
-      rollupOptions: {
+      rolldownOptions: {
         external: ['electron', 'electron/renderer'],
+        output: {
+          codeSplitting: false,
+        },
+        treeshake: {
+          moduleSideEffects: 'no-external',
+        },
       },
       reportCompressedSize: false,
       sourcemap: 'inline',

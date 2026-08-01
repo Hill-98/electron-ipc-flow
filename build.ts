@@ -1,35 +1,33 @@
-import { build } from 'vite'
-import dts from 'vite-plugin-dts'
+import { build } from 'tsdown'
 
 const target = ['chrome128', 'node20']
 
 // main
 await build({
-  build: {
-    lib: {
-      entry: ['src/index.ts'],
-      formats: ['es'],
+  dts: true,
+  entry: ['src/index.ts'],
+  format: ['es'],
+  inputOptions: {
+    experimental: {
+      attachDebugInfo: 'none',
     },
-    minify: false,
-    reportCompressedSize: false,
-    target,
   },
-  plugins: [dts({ rollupTypes: true })],
+  target,
 })
 
 // preload
 await build({
-  build: {
-    emptyOutDir: false,
-    lib: {
-      entry: ['src/preload.ts'],
-      formats: ['cjs'],
-    },
-    minify: false,
-    reportCompressedSize: false,
-    rolldownOptions: {
-      external: ['electron/renderer'],
-    },
-    target,
+  clean: false,
+  deps: {
+    neverBundle: ['electron/renderer'],
   },
+  dts: false,
+  entry: ['src/preload.ts'],
+  format: ['commonjs'],
+  inputOptions: {
+    experimental: {
+      attachDebugInfo: 'none',
+    },
+  },
+  target,
 })

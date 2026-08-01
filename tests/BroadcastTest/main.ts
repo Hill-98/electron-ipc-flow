@@ -19,21 +19,20 @@ async function createBrowserWindow() {
 }
 
 async function runTest() {
-  const wins: Electron.BrowserWindow[] = []
-  wins.push(await createBrowserWindow())
+  const win1 = await createBrowserWindow()
   server.send('say', 'electron-ipc-flow-1')
-  wins.push(await createBrowserWindow())
+  const win2 = await createBrowserWindow()
   server.send('say', 'electron-ipc-flow-2')
   await sleep(1)
-  server.webContentsGetter = () => [wins[1].webContents]
+  server.webContentsGetter = () => [win2.webContents]
   server.send('say', 'electron-ipc-flow-3')
   await sleep(1)
   server.webContentsGetter = undefined
   await sleep(1)
   server.send('say', 'electron-ipc-flow-4')
   await sleep(1000)
-  const body1 = await getWebContentsBody(wins[0].webContents)
-  const body2 = await getWebContentsBody(wins[1].webContents)
+  const body1 = await getWebContentsBody(win1.webContents)
+  const body2 = await getWebContentsBody(win2.webContents)
 
   assert.strictEqual(includeCount(body1, 'hello electron-ipc-flow-1.'), 1, 'test on win1 (number: 1) (once: false)')
   assert.strictEqual(includeCount(body1, 'hello once electron-ipc-flow-1.'), 1, 'test on win1 (number: 1) (once: true)')
@@ -55,7 +54,7 @@ async function runTest() {
   assert.strictEqual(includeCount(body2, 'hello electron-ipc-flow-4.'), 1, 'test on win2 (number: 4) (once: false)')
   assert.strictEqual(includeCount(body2, 'hello once electron-ipc-flow-4.'), 0, 'test on win2 (number: 4) (once: true)')
 
-  for (const win of wins) {
+  for (const win of [win1, win2]) {
     win.close()
   }
 }

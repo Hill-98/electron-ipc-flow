@@ -92,7 +92,7 @@ export class IpcServerController<
 
   readonly #eventsListeners = new Map<string, { listener: MainEventListener; once: boolean }[]>()
 
-  #handlers?: Partial<Functions>
+  #handlers: Partial<Functions> | undefined
 
   /**
    * @param name {string} Controller name

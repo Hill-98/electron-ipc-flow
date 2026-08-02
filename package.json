@@ -15,13 +15,9 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    },
-    "./preload": {
-      "default": "./dist/preload.cjs"
-    }
+    ".": "./dist/index.mjs",
+    "./package.json": "./package.json",
+    "./preload": "./dist/preload.cjs"
   },
   "homepage": "https://github.com/Hill-98/electron-ipc-flow",
   "repository": {
